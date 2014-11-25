@@ -5,20 +5,19 @@ OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it r
 * python-gdal
 
 ## Data Preperation
-1. Import GPS track
+##### 1. Import GPS track
 ```
 ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" sample.geojson
 ```
 ![alt tag](images/gps.jpg)
 
-
-2. Buffer GPS track
+##### 2. Buffer GPS track
 ```
 CREATE TABLE bufferGPS AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,10),4326) FROM ogrgeojson
 ```
 ![alt tag](images/buffer.jpg)
 
-3. Intersect GPS buffer with roads
+##### 3. Intersect GPS buffer with roads
 ```
 CREATE TABLE OSMextract AS
 SELECT
