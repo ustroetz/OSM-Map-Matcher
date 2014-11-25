@@ -26,4 +26,4 @@ WHERE
 ```
 
 # Background
-F. Marchal, J. Hackney and K.W. Axhausen (2004). Efficient map-matching of large GPS data sets - Tests on a speed monitoring experiment in Zurich. Arbeitsbericht Verkehrs- und Raumplanung, Institut fu ̈r Verkehrsplanung und Transportsysteme, ETH Zu ̈rich, Zurich
+F. Marchal, J. Hackney and K.W. Axhausen (2004). Efficient map-matching of large GPS data sets - Tests on a speed monitoring experiment in Zurich. Arbeitsbericht Verkehrs- und Raumplanung, Institut für Verkehrsplanung und Transportsysteme, ETH Zu ̈rich, Zurich
