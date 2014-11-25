@@ -1,4 +1,18 @@
 import ogr
+import sys
+
+def checkGPSBuffer(q2,geom):
+    # check if selected OSM segments are withing 50m GPS Buffer
+
+    q2Buffer= q2.Buffer(0.02)
+    if q2Buffer.Intersect(geom):
+        return True
+    else:
+        print "OSM segment not in GPS buffer"
+        sys.exit()
+        return False
+
+
 
 def main():
 
@@ -30,41 +44,51 @@ def main():
 
     for e in g:
         geom = e.GetGeometryRef()
-        id = e.GetField("id")
-        distDict[id] = geom.Distance(q1)
+        idSelected = e.GetField("id")
+        distDict[idSelected] = geom.Distance(q1)
 
-    id = min(distDict, key=distDict.get)
-    s.append(id)
-    print "First matching segment id =", id
+    idSelected = min(distDict, key=distDict.get)
+    s.append(idSelected)
+    print "First matching segment id =", idSelected
 
     # Loop over remaing segments e for all qn
     distDict = {}
 
     for count in range(qCount):    # loop over gps points
 
-        #get last selected line
-        g.SetAttributeFilter("id = %s" %id)
+        #get selected line
+        g.SetAttributeFilter("id = %s" %idSelected)
         feat = g.GetNextFeature()
-        currentLine = feat.GetGeometryRef()
+        selectedLine = feat.GetGeometryRef()
 
+        # clear filter and reset reading
         g.SetAttributeFilter(None)
         g.ResetReading()
+
+        #loop through all segments in graph
         for e in g:
             geom = e.GetGeometryRef()
-            if geom.Intersect(currentLine):         # Select only adjacent features
+
+
+            if geom.Intersect(selectedLine):         # Select only adjacent features
+
+                idSelected = e.GetField("id")
+
+                # construct current GPS point
                 q2Coords = qGeom.GetPoint(count)
                 q2 = ogr.Geometry(ogr.wkbPoint)
                 q2.AddPoint_2D(q2Coords[0],q2Coords[1])
 
-                id = e.GetField("id")
-                distDict[id] = geom.Distance(q2)
+                # get distance between current GPS poitn and current osm segment
+                distDict[idSelected] = geom.Distance(q2)
 
-        id = min(distDict, key=distDict.get)
-        if id not in s:
-            s.append(id)
+
+        idSelected = min(distDict, key=distDict.get)
+        print "selectedLine ID", idSelected
+        if idSelected not in s:
+            s.append(idSelected)
 
         count += 1
-
     print s
 
 
