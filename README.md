@@ -41,6 +41,7 @@ python OSMmapMatcher.py
 * Add OSM database import to docs
 * Return final match layer instead of ID list
 * Exclude parts of intersections
+
 ![alt tag](images/improvements.jpg)
 
 
