@@ -36,7 +36,6 @@ WHERE
 ```
 python OSMmapMatcher.py
 ```
-Matching Results currently only list with OSM segment IDs
 ![alt tag](images/match.jpg)
 
 ## Improvements
