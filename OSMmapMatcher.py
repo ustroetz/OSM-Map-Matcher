@@ -16,7 +16,7 @@ def checkGPSBuffer(q2,geom):
 
 def main():
 
-    osmTable = "extractistanbul"
+    osmTable = "OSMextract"
     gpsTable = "ogrgeojson"
 
     databaseName = "test"
@@ -52,7 +52,7 @@ def main():
     print "First matching segment id =", idSelected
 
     # Loop over remaing segments e for all qn
-    for count in range(qCount):    
+    for count in range(qCount):
         distDict = {}
 
         #get selected line
