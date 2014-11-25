@@ -1,11 +1,19 @@
-                                                                            ;
-# import GPS track
+# Requires
+* python-gdal
+
+# Data Preperation
+1. import GPS track
+```
 ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" sample.geojson
+```
 
-# buffer GPS track
+2. buffer GPS track
+```
 CREATE TABLE bufferGPS AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,10),4326) FROM ogrgeojson
+```
 
-# intersect GPS buffer with roads
+3. intersect GPS buffer with roads
+```
 CREATE TABLE extractISTANBUL AS
 SELECT
     a.id,
@@ -15,3 +23,4 @@ FROM
     bufferGPS as b
 WHERE
     ST_Intersects(a.geom_way,b.st_transform);
+```
