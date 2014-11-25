@@ -52,9 +52,8 @@ def main():
     print "First matching segment id =", idSelected
 
     # Loop over remaing segments e for all qn
-    distDict = {}
-
-    for count in range(qCount):    # loop over gps points
+    for count in range(qCount):    
+        distDict = {}
 
         #get selected line
         g.SetAttributeFilter("id = %s" %idSelected)
@@ -68,7 +67,6 @@ def main():
         #loop through all segments in graph
         for e in g:
             geom = e.GetGeometryRef()
-
 
             if geom.Intersect(selectedLine):         # Select only adjacent features
 
