@@ -22,7 +22,7 @@ CREATE TABLE bufferGPS AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,10
 CREATE TABLE OSMextract AS
 SELECT
     a.id,
-    b.geom_way
+    a.geom_way
 FROM
     osm_2po_4pgr as a,
     bufferGPS as b
@@ -39,6 +39,7 @@ python OSMmapMatcher.py
 
 ## Improvements
 * Add OSM database import to docs
+* Add KML reader based on http://www.gpsvisualizer.com/convert?output
 * Return final match layer instead of ID list
 * Exclude parts of intersections
 
