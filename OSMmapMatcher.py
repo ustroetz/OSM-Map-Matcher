@@ -21,7 +21,7 @@ def bearing(origin, destination):
 def main():
 
     osmTable = "osmextractsplit"
-    gpsTable = "ogrgeojson"
+    gpsTable = "gpspoints"
 
     databaseName = "test"
     databaseUser = "ustroetz"
@@ -130,7 +130,7 @@ def main():
                 oDict[oIDcurrent] = w
 
         oIDselected = max(oDict, key=oDict.get)
-        if oDict[oIDselected] == 0: sys.exit("Error weight is 0") 
+        if oDict[oIDselected] == 0: sys.exit("Error weight is 0")
 
         print "selectedLine ID", oIDselected
         if oIDselected not in rList:
