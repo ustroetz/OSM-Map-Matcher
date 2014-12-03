@@ -19,7 +19,7 @@ psql -d test -q -f osm/osm_2po_4pgr.sql
 
 ##### 3. Import GPS track
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" sample.geojson
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" -nln gpsPoints sample.geojson
 ```
 ![alt tag](images/gps.jpg)
 
@@ -62,14 +62,11 @@ python OSMmapMatcher.py
 ![alt tag](images/match.jpg)
 
 ## Improvements
-* Add OSM database import to docs
 * Add KML reader based on http://www.gpsvisualizer.com/convert?output
 * Return final match layer instead of ID list
-* Exclude parts of intersections
-
-![alt tag](images/improvements.jpg)
 
 
 ## Background
-Marchal,F., Hackney, J. and K.W. Axhausen (2005) "Efficient map-matching of large GPS data sets - Tests on a speed monitoring experiment in Zurich". Presented at TRB annual meeting, Washington D.C., Jan. 2005, to appear in Transportation Research Record.
-http://www.strc.ch/conferences/2005/Marchal.pdf
+* first OSM segment is found by closest distance
+* all further features need to connect to previously selected feature
+* feature is selected based on weighted distance (1.0) and bearing (0.1).
