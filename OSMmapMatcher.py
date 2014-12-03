@@ -138,13 +138,6 @@ def main():
 
         count += 1
 
-        # if count > 1237:
-        #     quit()
-
-
-
-
-
     print rList
 
 
