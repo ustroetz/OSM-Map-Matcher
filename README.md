@@ -53,8 +53,6 @@ WHERE
 ```
 ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" -nln osmextractsplit temp.shp
 ```
-Update ID
-
 ## Run script
 ```
 python OSMmapMatcher.py
