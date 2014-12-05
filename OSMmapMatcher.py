@@ -19,6 +19,7 @@ def bearing(origin, destination):
 
     return bn
 
+
 def main():
 
     osmTable = "ways_extract_split"
@@ -27,7 +28,7 @@ def main():
     databaseName = "omm"
     databaseUser = "postgres"
     databasePW = ""
-    connString = "PG: dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
+    connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
     source = osr.SpatialReference()
     source.ImportFromEPSG(4326)
@@ -37,10 +38,10 @@ def main():
     transform4326 = osr.CoordinateTransformation(target, source)
 
 
-    conn = ogr.Open(connString)
+    connOGR = ogr.Open("PG: " + connString)
 
-    oLayer = conn.GetLayer(osmTable)
-    qLayer = conn.GetLayer(gpsTable)
+    oLayer = connOGR.GetLayer(osmTable)
+    qLayer = connOGR.GetLayer(gpsTable)
     qFeatureCount = qLayer.GetFeatureCount()
 
     print "Total GPS points to match:", qFeatureCount
@@ -50,7 +51,8 @@ def main():
 
 
     # Find first matching OSM segment o1 for q1
-    qFeature = qLayer.GetFeature(1)
+    qID = 1
+    qFeature = qLayer.GetFeature(qID)
     q1Geom = qFeature.GetGeometryRef()
     for oFeature in oLayer:
         oGeom = oFeature.GetGeometryRef()
@@ -63,15 +65,15 @@ def main():
     print "First matching OSM segment ID =", oIDselected
 
 
-    for count in range(1,qFeatureCount):
+    while qID <= qFeatureCount:
         # Loop over remaing OSM segments for all qn
 
         print "##################################################"
-        print "Point ID", count, "of", qFeatureCount
+        print "Point ID", qID, "of", qFeatureCount
         oDict = {}
 
         # construct current GPS point
-        qFeature = qLayer.GetFeature(count)
+        qFeature = qLayer.GetFeature(qID)
         qGeom = qFeature.GetGeometryRef()
 
         # get selected line
@@ -79,8 +81,7 @@ def main():
         oSGeom = oSFeature.GetGeometryRef()
         oSPointF, oSPointP = oSGeom.GetPoints()
 
-        # clear filter and reset reading
-        oLayer.SetAttributeFilter(None)
+        # reset reading
         oLayer.ResetReading()
 
         #loop through all segments in OSM layer
@@ -125,14 +126,49 @@ def main():
 
                 oDict[oIDcurrent] = w, wB, wD
 
+        if sum([wDList[2] for wDList in oDict.values()])==0:
+            # q not within 50m of next oFeature (weight Distance eqauls 0)
+            for sq in qGeom:
+                q = sq.GetPoint()
 
-        if sum([wDList[2] for wDList in oDict.values()])==0: sys.exit("Erro no oFeature within 50m")
-        oIDselected = max(oDict, key=oDict.get)
-        print "selectedLine ID", oIDselected
-        if oIDselected not in rList:
-            rList.append(oIDselected)
+            connPsycopg = psycopg2.connect(connString)
+            cursor = connPsycopg.cursor()
+            statement = """
+                SELECT seq, gid FROM pgr_fromAtoB('ways',%s,%s,%s,%s)
+                        """% (str(q[0]),str(q[1]),str(oSGeom.GetPoint(0)[0]),str(oSGeom.GetPoint(0)[1]))
+            cursor.execute(statement)
+            tStatus = cursor.fetchall()
+            while not tStatus:
+                # route next point until route is found
+                qID += 1
+                print "Routing Point ID", qID, "of", qFeatureCount
+                qFeature = qLayer.GetFeature(qID)
+                qGeom = qFeature.GetGeometryRef()
+                for sq in qGeom:
+                    q = sq.GetPoint()
+                statement = """
+                    SELECT seq, gid FROM pgr_fromAtoB('ways',%s,%s,%s,%s)
+                            """% (str(oSGeom.GetPoint(0)[0]),str(oSGeom.GetPoint(0)[1]),str(q[0]),str(q[1]))
+                cursor.execute(statement)
+                tStatus = cursor.fetchall()
 
-        count += 1
+            sSeg = ','.join(map(str, [row[1] for row in tStatus]))
+
+            cursor.execute("select ogc_fid from ways_extract_split where gid in (%s);"% sSeg)
+            tStatus = cursor.fetchall()
+            for i in tStatus:
+                oIDselected = int(i[0])
+                print "selectedLine ID", oIDselected
+                if oIDselected not in rList:
+                    rList.append(oIDselected)
+
+        else:
+            oIDselected = max(oDict, key=oDict.get)
+            qID += 1
+            print "selectedLine ID", oIDselected
+            if oIDselected not in rList:
+                rList.append(oIDselected)
+
 
     print rList
 
