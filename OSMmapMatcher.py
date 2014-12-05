@@ -55,7 +55,6 @@ def main():
     for oFeature in oLayer:
         oGeom = oFeature.GetGeometryRef()
         oIDcurrent = oFeature.GetFID()
-        print oIDcurrent
         oDict[oIDcurrent] = oGeom.Distance(q1Geom)
 
     oIDselected = min(oDict, key=oDict.get)
@@ -78,9 +77,7 @@ def main():
         # get selected line
         oSFeature = oLayer.GetFeature(oIDselected)
         oSGeom = oSFeature.GetGeometryRef()
-        oSGeomPointCount = oSGeom.GetPointCount()
-        oSPointF = oSGeom.GetPoint(0)
-        oSPointP = oSGeom.GetPoint(oSGeomPointCount-1)
+        oSPointF, oSPointP = oSGeom.GetPoints()
 
         # clear filter and reset reading
         oLayer.SetAttributeFilter(None)
@@ -90,12 +87,10 @@ def main():
         for oFeature in oLayer:
 
             oGeom = oFeature.GetGeometryRef()
-            oIDcurrent = oFeature.GetField("id")
+            oIDcurrent = oFeature.GetFID()
 
             # check if first or last point intersects with last selected line
-            oGeomPointCount = oGeom.GetPointCount()
-            oPointD = oGeom.GetPoint(0)
-            oPointO = oGeom.GetPoint(oGeomPointCount-1)
+            oPointD, oPointO = oGeom.GetPoints()
             if oPointO == oSPointF or oPointO == oSPointP or oPointD == oSPointF or oPointD == oSPointP:
 
                 # get bearing weight
@@ -125,20 +120,19 @@ def main():
                 # final weight
                 w = (wD+(wB/10.0))/2.0
 
-                print oIDcurrent, "connects to", oIDselected, "with weight", w, "(B",wB,"D",wD,")"
+                print oIDcurrent, "connects to", oIDselected, "with weight", w, "(wB",wB,"wD",wD,")"
 
 
-                oDict[oIDcurrent] = w
+                oDict[oIDcurrent] = w, wB, wD
 
+
+        if sum([wDList[2] for wDList in oDict.values()])==0: sys.exit("Erro no oFeature within 50m")
         oIDselected = max(oDict, key=oDict.get)
-        if oDict[oIDselected] == 0: sys.exit("Error weight is 0")
-
         print "selectedLine ID", oIDselected
         if oIDselected not in rList:
             rList.append(oIDselected)
 
         count += 1
-        quit()
 
     print rList
 
