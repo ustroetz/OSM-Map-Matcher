@@ -3,6 +3,8 @@ OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it r
 
 ## Requires
 * python-gdal
+* psycopg2
+* PostgreSQL with PostGIS and pgRouting
 
 ## Data Preperation
 ### OSM Data Preperation
@@ -19,7 +21,7 @@ psql -d test -q -f osm/osm_2po_4pgr.sql
 
 ##### 3. Import GPS track
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" -nln gpsPoints sample.geojson
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" sample.gpx track_points tracks
 ```
 ![alt tag](images/gps.jpg)
 
