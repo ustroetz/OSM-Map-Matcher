@@ -1,6 +1,7 @@
 import ogr, osr
 import sys
 import math
+import psycopg2
 
 def bearing(origin, destination):
     lon1, lat1, z = origin
