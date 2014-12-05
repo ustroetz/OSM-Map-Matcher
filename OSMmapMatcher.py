@@ -23,7 +23,7 @@ def bearing(origin, destination):
 def main():
 
     osmTable = "ways_extract_split"
-    gpsTable = "track_points"
+    gpsTable = "track_points_sub"
 
     databaseName = "omm"
     databaseUser = "postgres"
@@ -128,6 +128,8 @@ def main():
 
         if sum([wDList[2] for wDList in oDict.values()])==0:
             # q not within 50m of next oFeature (weight Distance eqauls 0)
+            print "Routing Point ID", qID, "of", qFeatureCount
+
             for sq in qGeom:
                 q = sq.GetPoint()
 
@@ -137,8 +139,8 @@ def main():
                 SELECT seq, gid FROM pgr_fromAtoB('ways',%s,%s,%s,%s)
                         """% (str(q[0]),str(q[1]),str(oSGeom.GetPoint(0)[0]),str(oSGeom.GetPoint(0)[1]))
             cursor.execute(statement)
-            tStatus = cursor.fetchall()
-            while not tStatus:
+            selectedWays = cursor.fetchall()
+            while not selectedWays:
                 # route next point until route is found
                 qID += 1
                 print "Routing Point ID", qID, "of", qFeatureCount
@@ -150,9 +152,13 @@ def main():
                     SELECT seq, gid FROM pgr_fromAtoB('ways',%s,%s,%s,%s)
                             """% (str(oSGeom.GetPoint(0)[0]),str(oSGeom.GetPoint(0)[1]),str(q[0]),str(q[1]))
                 cursor.execute(statement)
-                tStatus = cursor.fetchall()
+                selectedWays = cursor.fetchall()
 
-            sSeg = ','.join(map(str, [row[1] for row in tStatus]))
+            # add current oFeature to selectedWays TODO: can be replace once split_ways are routable
+            cursor.execute("select gid from ways_extract_split where ogc_fid = %s;"% oIDselected)
+            selectedWay = cursor.fetchall()
+
+            sSeg = ','.join(map(str, [row[1] for row in selectedWays])) + ',' + str(selectedWay[0][0])
 
             cursor.execute("select ogc_fid from ways_extract_split where gid in (%s);"% sSeg)
             tStatus = cursor.fetchall()
@@ -161,6 +167,7 @@ def main():
                 print "selectedLine ID", oIDselected
                 if oIDselected not in rList:
                     rList.append(oIDselected)
+            qID += 1
 
         else:
             oIDselected = max(oDict, key=oDict.get)
