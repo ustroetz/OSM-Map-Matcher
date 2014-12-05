@@ -57,7 +57,7 @@ def main():
         oIDcurrent = oFeature.GetFID()
         print oIDcurrent
         oDict[oIDcurrent] = oGeom.Distance(q1Geom)
-    
+
     oIDselected = min(oDict, key=oDict.get)
     rList.append(oIDselected)
     print "##########################"
@@ -76,8 +76,7 @@ def main():
         qGeom = qFeature.GetGeometryRef()
 
         # get selected line
-        oLayer.SetAttributeFilter("id = %s" %oIDselected)
-        oSFeature = oLayer.GetNextFeature()
+        oSFeature = oLayer.GetFeature(oIDselected)
         oSGeom = oSFeature.GetGeometryRef()
         oSGeomPointCount = oSGeom.GetPointCount()
         oSPointF = oSGeom.GetPoint(0)
@@ -139,6 +138,7 @@ def main():
             rList.append(oIDselected)
 
         count += 1
+        quit()
 
     print rList
 
