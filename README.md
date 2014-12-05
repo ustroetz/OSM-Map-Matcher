@@ -53,7 +53,7 @@ WHERE
 ##### 5. Apply Explode lines in QGIS
 ##### 6. Reload into PostGIS
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_extract_split temp.geojson
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_extract_split temp.shp
 ```
 ## Run script
 ```
