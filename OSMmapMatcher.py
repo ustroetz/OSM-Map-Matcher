@@ -21,11 +21,11 @@ def bearing(origin, destination):
 
 def main():
 
-    osmTable = "osmextractsplit"
-    gpsTable = "gpspoints"
+    osmTable = "ways_extract_split"
+    gpsTable = "track_points"
 
-    databaseName = "test"
-    databaseUser = "ustroetz"
+    databaseName = "omm"
+    databaseUser = "postgres"
     databasePW = ""
     connString = "PG: dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
@@ -54,9 +54,10 @@ def main():
     q1Geom = qFeature.GetGeometryRef()
     for oFeature in oLayer:
         oGeom = oFeature.GetGeometryRef()
-        oIDcurrent = oFeature.GetField("id")
+        oIDcurrent = oFeature.GetFID()
+        print oIDcurrent
         oDict[oIDcurrent] = oGeom.Distance(q1Geom)
-
+    
     oIDselected = min(oDict, key=oDict.get)
     rList.append(oIDselected)
     print "##########################"
