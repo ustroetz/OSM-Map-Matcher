@@ -27,33 +27,33 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" sample.gpx 
 
 ##### 4. Buffer GPS track
 ```
-CREATE TABLE bufferGPS AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.0005),4326) FROM ogrgeojson
+CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.0005),4326) FROM tracks
 ```
 ![alt tag](images/buffer.jpg)
 
 ##### 5. Intersect GPS buffer with roads
 ```
-CREATE TABLE osmextract AS
+CREATE TABLE ways_extract AS
 SELECT
-    a.id,
-    a.geom_way,
+    a.gid,
+    a.the_geom,
     a.x1,
     a.y1,
     a.x2,
     a.y2,
     a.reverse_cost
 FROM
-    osm_2po_4pgr as a,
-    bufferGPS as b
+    ways as a,
+    tracks_buffer as b
 WHERE
-    ST_Intersects(a.geom_way,b.st_transform);
+    ST_Intersects(a.the_geom,b.st_transform);
 ```
 ![alt tag](images/istanbulExtract.jpg)
 
 ##### 5. Apply Explode lines in QGIS
 ##### 6. Reload into PostGIS
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=ustroetz dbname=test" -nln osmextractsplit temp.shp
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_extract_split temp.geojson
 ```
 ## Run script
 ```
