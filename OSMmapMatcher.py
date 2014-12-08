@@ -106,6 +106,61 @@ def bearing(origin, destination):
     return bn
 
 
+def query(connString, statement):
+    connPsycopg = psycopg2.connect(connString)
+    cursor = connPsycopg.cursor()
+    cursor.execute(statement)
+    result = cursor.fetchall()
+    return result
+
+def vertexQuery(geom):
+    return """
+        SELECT id::integer FROM osm_2po_vertex
+              ORDER BY geom_vertex <-> ST_GeometryFromText('%s',4326) LIMIT 1
+              """% (geom.ExportToWkt())
+
+def routeQuery(sV, tV):
+    return """
+        SELECT id2 FROM pgr_dijkstra('
+                        SELECT id,
+                                 source::integer,
+                                 target::integer,
+                                 cost
+                                FROM osm_2po_4pgr',
+                        %s, %s, false, false);
+                        """% (sV, tV)
+
+def rWTosSegQuery(rW):
+    return """
+        SELECT ogc_fid from ways_extract_split where gid in (%s);
+        """% (rW)
+
+
+def rWTosSeg(rWL, connString):
+    statement = rWTosSegQuery(rWL)
+    sSeg = query(connString, statement)
+    return sSeg
+
+def routing(sourceGeom, targetGeom, connString):
+    # routes form source to target and returns list with ids of ways
+
+    # get source route vertex
+    statement = vertexQuery(sourceGeom)
+    sV = query(connString, statement)
+
+    # get target route vertex
+    statement = vertexQuery(targetGeom)
+    tV = query(connString, statement)
+
+    # get route
+    statement = routeQuery(sV[0][0], tV[0][0])
+    r = query(connString, statement)
+
+    rW = [i[0] for i in r[:-1]]
+
+    return rW
+
+
 def main():
 
     osmTable = "ways_extract_split"
@@ -201,48 +256,37 @@ def main():
 
 
 
-
-
         if sum([wDList[2] for wDList in oDict.values()]) == 0:
             # q not within 50m of next oFeature (weight Distance eqauls 0)
             #warnings.warn("No road within 50m of current GPS point.")
-            print "No road within 50m of current GPS point."
+            print "No road within 50 m of current GPS point."
 
             qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList, transform3857)
             print "Next connected Point", qID, "with OSM segment", oIDselected
 
+            print "Routing from last selected line", oIDcurrent
+            sourceGeom = ogr.Geometry(ogr.wkbPoint)
+            sourceGeom.AddPoint(oSGeom.GetPoint()[0], oSGeom.GetPoint()[1], 0)
+
             print "Routing to Point", qID
             qFeature = qLayer.GetFeature(qID)
             qGeom = qFeature.GetGeometryRef()
-            for sq in qGeom:
-                q = sq.GetPoint()
 
-            connPsycopg = psycopg2.connect(connString)
-            cursor = connPsycopg.cursor()
-            statement = """
-                SELECT seq, gid FROM pgr_fromAtoB('ways',%s,%s,%s,%s)
-                        """% (str(q[0]),str(q[1]),str(oSGeom.GetPoint(0)[0]),str(oSGeom.GetPoint(0)[1]))
-            cursor.execute(statement)
-            selectedWays = cursor.fetchall()
+            rW = routing(sourceGeom, qGeom, connString)
+            print "Routing selected lines ID", rW
 
-            # add current oFeature to selectedWays TODO: can be replaced once split_ways are routable
-            cursor.execute("select gid from ways_extract_split where ogc_fid = %s;"% oIDselected)
-            selectedWay = cursor.fetchall()
+            # # add current oFeature to selectedWays TODO: can be replaced once split_ways are routable
+            # cursor.execute("select gid from ways_extract_split where ogc_fid = %s;"% oIDselected)
+            # selectedWay = cursor.fetchall()
 
-            sSeg = ','.join(map(str, [row[1] for row in selectedWays])) + ',' + str(selectedWay[0][0])
-
-            cursor.execute("select ogc_fid from ways_extract_split where gid in (%s);"% sSeg)
-            tStatus = cursor.fetchall()
-            print "Routing selected lines ID", [i[0] for i in tStatus]
-            for i in tStatus:
-                oIDselectedR = int(i[0])
-                if oIDselectedR not in rList:
-                    rList.append(oIDselectedR)
+            rWL = ','.join(map(str, rW))
+            sSeg = rWTosSeg(rWL, connString)
+            [rList.append(oIDselectedR) if oIDselectedR not in rList else '' for oIDselectedR in sSeg]
 
             if oIDselected not in rList:
-                rList.append(oIDselectedR)
+                rList.append(oIDselected)
             print "selectedLine ID", oIDselected
-            
+
             qID += 1
 
 
