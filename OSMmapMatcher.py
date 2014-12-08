@@ -7,8 +7,7 @@ def findFirstMatch(qID, qLayer, oLayer, rList):
 
     # Find first matching OSM segment o1 for q1
     oDict = {}
-    qFeature = qLayer.GetFeature(qID)
-    q1Geom = qFeature.GetGeometryRef()
+    qFeature, q1Geom = GetGeomGetFeatFromID(qLayer, qID)
     oLayer.ResetReading()
     for oFeature in oLayer:
         oGeom = oFeature.GetGeometryRef()
@@ -29,8 +28,7 @@ def findNextMatch(qID, qLayer, oLayer, rList):
 
     while oIDselected == None:
 
-        qFeature = qLayer.GetFeature(qID)
-        qGeom = qFeature.GetGeometryRef()
+        qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
         qGeom = transformGeom(qGeom, 4326, 3857)
         oLayer.ResetReading()
         for oFeature in oLayer:
@@ -55,8 +53,7 @@ def testMatch(qID, qLayer, oLayer, rList):
     countT = 0
 
     while count < 3:
-            qFeature = qLayer.GetFeature(qID)
-            qGeom = qFeature.GetGeometryRef()
+            qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
             qGeom = transformGeom(qGeom, 4326, 3857)
             oLayer.ResetReading()
             for oFeature in oLayer:
@@ -167,6 +164,12 @@ def transformGeom(geom, sourceEPSG, targetEPSG):
 
     return geom
 
+def GetGeomGetFeatFromID(l, id):
+    f = l.GetFeature(id)
+    g = f.GetGeometryRef()
+
+    return f, g
+
 
 def main():
 
@@ -179,8 +182,6 @@ def main():
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
 
-
-
     connOGR = ogr.Open("PG: " + connString)
 
     oLayer = connOGR.GetLayer(osmTable)
@@ -190,8 +191,8 @@ def main():
     print "Total GPS points to match:", qFeatureCount
 
     rList = []
-
     qID = 1
+
     oIDselected, rList = findFirstMatch(qID, qLayer, oLayer, rList)
 
 
@@ -203,12 +204,10 @@ def main():
         oDict = {}
 
         # construct current GPS point
-        qFeature = qLayer.GetFeature(qID)
-        qGeom = qFeature.GetGeometryRef()
+        qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
 
         # get selected line
-        oSFeature = oLayer.GetFeature(oIDselected)
-        oSGeom = oSFeature.GetGeometryRef()
+        oSFeature, oSGeom = GetGeomGetFeatFromID(oLayer, oIDselected)
         oSPointF, oSPointP = oSGeom.GetPoints()
 
         # reset reading
@@ -270,8 +269,7 @@ def main():
             sourceGeom.AddPoint(oSGeom.GetPoint()[0], oSGeom.GetPoint()[1], 0)
 
             print "Routing to Point", qID
-            qFeature = qLayer.GetFeature(qID)
-            qGeom = qFeature.GetGeometryRef()
+            qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
 
             ID = routing(sourceGeom, qGeom, connString)
             print "Routing selected lines ID", ID
