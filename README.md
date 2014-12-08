@@ -35,18 +35,18 @@ CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometr
 ```
 CREATE TABLE ways_extract AS
 SELECT
-    a.gid,
-    a.the_geom,
+    a.id,
+    a.geom_way,
     a.x1,
     a.y1,
     a.x2,
     a.y2,
     a.reverse_cost
 FROM
-    ways as a,
+    osm_2po_4pgr as a,
     tracks_buffer as b
 WHERE
-    ST_Intersects(a.the_geom,b.st_transform);
+    ST_Intersects(a.geom_way,b.st_transform);
 ```
 ![alt tag](images/istanbulExtract.jpg)
 
