@@ -132,7 +132,7 @@ def routeQuery(sV, tV):
 
 def rWTosSegQuery(rW):
     return """
-        SELECT ogc_fid from ways_extract_split where gid in (%s);
+        SELECT ogc_fid from ways_extract_split where id in (%s);
         """% (rW)
 
 
@@ -281,7 +281,7 @@ def main():
 
             rWL = ','.join(map(str, rW))
             sSeg = rWTosSeg(rWL, connString)
-            [rList.append(oIDselectedR) if oIDselectedR not in rList else '' for oIDselectedR in sSeg]
+            [rList.append(oIDselectedR[0]) if oIDselectedR[0] not in rList else '' for oIDselectedR in sSeg]
 
             if oIDselected not in rList:
                 rList.append(oIDselected)
