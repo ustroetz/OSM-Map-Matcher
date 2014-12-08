@@ -2,7 +2,6 @@ import ogr, osr
 import sys
 import math
 import psycopg2
-import warnings
 
 def findFirstMatch(qID, qLayer, oLayer, rList):
 
@@ -24,7 +23,7 @@ def findFirstMatch(qID, qLayer, oLayer, rList):
     return oIDselected, rList
 
 
-def findNextMatch(qID, qLayer, oLayer, rList, transform3857):
+def findNextMatch(qID, qLayer, oLayer, rList):
     oDict = {}
     oIDselected = None
 
@@ -32,11 +31,11 @@ def findNextMatch(qID, qLayer, oLayer, rList, transform3857):
 
         qFeature = qLayer.GetFeature(qID)
         qGeom = qFeature.GetGeometryRef()
-        qGeom.Transform(transform3857)
+        qGeom = transformGeom(qGeom, 4326, 3857)
         oLayer.ResetReading()
         for oFeature in oLayer:
             oGeom = oFeature.GetGeometryRef()
-            oGeom.Transform(transform3857)
+            oGeom = transformGeom(oGeom, 4326, 3857)
             oIDcurrent = oFeature.GetFID()
             dist = oGeom.Distance(qGeom)
             if dist <= 5.0:
@@ -47,10 +46,9 @@ def findNextMatch(qID, qLayer, oLayer, rList, transform3857):
         else:
             qID += 1
 
-
     return qID, oIDselected
 
-def testMatch(qID, qLayer, oLayer, rList, transform3857):
+def testMatch(qID, qLayer, oLayer, rList):
 
     test = False
     count = 0
@@ -59,11 +57,11 @@ def testMatch(qID, qLayer, oLayer, rList, transform3857):
     while count < 3:
             qFeature = qLayer.GetFeature(qID)
             qGeom = qFeature.GetGeometryRef()
-            qGeom.Transform(transform3857)
+            qGeom = transformGeom(qGeom, 4326, 3857)
             oLayer.ResetReading()
             for oFeature in oLayer:
                 oGeom = oFeature.GetGeometryRef()
-                oGeom.Transform(transform3857)
+                oGeom = transformGeom(oGeom, 4326, 3857)
                 oIDcurrent = oFeature.GetFID()
                 dist = oGeom.Distance(qGeom)
                 if dist <= 5.0:
@@ -78,12 +76,11 @@ def testMatch(qID, qLayer, oLayer, rList, transform3857):
 
     return test
 
-def findNextMatchS(qID, qLayer, oLayer, rList, transform3857):
-
+def findNextMatchS(qID, qLayer, oLayer, rList):
     test = False
     while not test:
-        qID, oIDselected = findNextMatch(qID, qLayer, oLayer, rList, transform3857)
-        test = testMatch(qID, qLayer, oLayer, rList, transform3857)
+        qID, oIDselected = findNextMatch(qID, qLayer, oLayer, rList)
+        test = testMatch(qID, qLayer, oLayer, rList)
         qID += 1
 
     return (qID-1), oIDselected
@@ -160,6 +157,16 @@ def routing(sourceGeom, targetGeom, connString):
 
     return rW
 
+def transformGeom(geom, sourceEPSG, targetEPSG):
+    source = osr.SpatialReference()
+    source.ImportFromEPSG(sourceEPSG)
+    target = osr.SpatialReference()
+    target.ImportFromEPSG(targetEPSG)
+    transform = osr.CoordinateTransformation(source, target)
+    geom.Transform(transform)
+
+    return geom
+
 
 def main():
 
@@ -171,12 +178,7 @@ def main():
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
-    source = osr.SpatialReference()
-    source.ImportFromEPSG(4326)
-    target = osr.SpatialReference()
-    target.ImportFromEPSG(3857)
-    transform3857 = osr.CoordinateTransformation(source, target)
-    transform4326 = osr.CoordinateTransformation(target, source)
+
 
 
     connOGR = ogr.Open("PG: " + connString)
@@ -234,23 +236,23 @@ def main():
                     wB = 0.0
 
                 # get distance weight
-                oGeom.Transform(transform3857)
-                qGeom.Transform(transform3857)
+                oGeom = transformGeom(oGeom, 4326, 3857)
+                qGeom = transformGeom(qGeom, 4326, 3857)
                 d = oGeom.Distance(qGeom)
-                qGeom.Transform(transform4326)
+                qGeom = transformGeom(qGeom, 3857, 4326)
 
-                if d >= 10.0:                 # normalize distance weight
+
+                if d >= 20.0:                 # normalize distance weight
                     wD = 0
-                elif d < 10.0 and d > 0.0:
+                elif d < 20.0 and d > 0.0:
                     wD = 1-d/50.0
                 elif d == 0.00:
                     wD = 1.0
 
                 # final weight
-                w = (wD+(wB/10.0))/2.0
+                w = (wD+(wB/5.0))/2.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "(wB",wB,"wD",wD,")"
-
 
                 oDict[oIDcurrent] = w, wB, wD
 
@@ -258,10 +260,9 @@ def main():
 
         if sum([wDList[2] for wDList in oDict.values()]) == 0:
             # q not within 50m of next oFeature (weight Distance eqauls 0)
-            #warnings.warn("No road within 50m of current GPS point.")
             print "No road within 50 m of current GPS point."
 
-            qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList, transform3857)
+            qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList)
             print "Next connected Point", qID, "with OSM segment", oIDselected
 
             print "Routing from last selected line", oIDcurrent
