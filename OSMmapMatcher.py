@@ -130,16 +130,16 @@ def routeQuery(sV, tV):
                         %s, %s, false, false);
                         """% (sV, tV)
 
-def rWTosSegQuery(rW):
+def GetFIDfromIDQuery(ID):
     return """
         SELECT ogc_fid from ways_extract_split where id in (%s);
-        """% (rW)
+        """% (ID)
 
 
-def rWTosSeg(rWL, connString):
-    statement = rWTosSegQuery(rWL)
-    sSeg = query(connString, statement)
-    return sSeg
+def GetFIDfromID(ID, connString):
+    statement = GetFIDfromIDQuery(ID)
+    FID = query(connString, statement)
+    return FID
 
 def routing(sourceGeom, targetGeom, connString):
     # routes form source to target and returns list with ids of ways
@@ -272,15 +272,11 @@ def main():
             qFeature = qLayer.GetFeature(qID)
             qGeom = qFeature.GetGeometryRef()
 
-            rW = routing(sourceGeom, qGeom, connString)
-            print "Routing selected lines ID", rW
+            ID = routing(sourceGeom, qGeom, connString)
+            print "Routing selected lines ID", ID
 
-            # # add current oFeature to selectedWays TODO: can be replaced once split_ways are routable
-            # cursor.execute("select gid from ways_extract_split where ogc_fid = %s;"% oIDselected)
-            # selectedWay = cursor.fetchall()
-
-            rWL = ','.join(map(str, rW))
-            sSeg = rWTosSeg(rWL, connString)
+            rWL = ','.join(map(str, ID))
+            sSeg = GetFIDfromID(rWL, connString)
             [rList.append(oIDselectedR[0]) if oIDselectedR[0] not in rList else '' for oIDselectedR in sSeg]
 
             if oIDselected not in rList:
