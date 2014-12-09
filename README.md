@@ -22,13 +22,13 @@ psql -d test -q -f osm/osm_2po_vertex.sql
 ##### 3. Apply Explode lines in QGIS
 ##### 4. Reload into PostGIS
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_extract_split temp.shp
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_split temp.shp
 ```
 
 ### GPS Data Preperation
 ##### 1. Import GPS track
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" sample.gpx track_vertex tracks
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" sample.gpx track_points tracks
 ```
 
 ##### 2. Buffer GPS track
@@ -59,7 +59,7 @@ WHERE
 ```
 python OSMmapMatcher.py
 ```
-![alt tag](images/match.jpg)
+
 
 ## Improvements
 * Add KML reader based on http://www.gpsvisualizer.com/convert?output
@@ -69,4 +69,4 @@ python OSMmapMatcher.py
 ## Background
 * first OSM segment is found by closest distance
 * all further features need to connect to previously selected feature
-* feature is selected based on weighted distance (1.0) and bearing (0.1).
+* feature is selected based on weighted distance and bearing

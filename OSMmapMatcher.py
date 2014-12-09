@@ -1,7 +1,8 @@
 import ogr, osr
-import sys
 import math
 import psycopg2
+import os
+
 
 def findFirstMatch(qID, qLayer, oLayer, rList):
 
@@ -102,8 +103,14 @@ def query(connString, statement):
     connPsycopg = psycopg2.connect(connString)
     cursor = connPsycopg.cursor()
     cursor.execute(statement)
-    result = cursor.fetchall()
-    return result
+    connPsycopg.commit()
+    try:
+        result = cursor.fetchall()
+        return result
+    except:
+        pass
+
+
 
 def vertexQuery(geom):
     return """
@@ -122,11 +129,39 @@ def routeQuery(sV, tV):
                         %s, %s, false, false);
                         """% (sV, tV)
 
+def bufferQuery():
+    return """
+    CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.0005),4326) FROM tracks;
+        """
+
+def dropTableQuery(table):
+        return """
+            DROP TABLE IF EXISTS %s;
+            """% (table)
+
+
 def GetFIDfromIDQuery(ID):
     return """
-        SELECT ogc_fid from ways_extract_split where id in (%s);
+        SELECT ogc_fid from ways_extract where id in (%s);
         """% (ID)
 
+def intersectQuery():
+    return """
+        CREATE TABLE ways_extract AS
+    SELECT
+        a.id,
+        a.wkb_geometry,
+        a.x1,
+        a.y1,
+        a.x2,
+        a.y2,
+        a.reverse_co
+    FROM
+        ways_split as a,
+        tracks_buffer as b
+    WHERE
+        ST_Intersects(a.wkb_geometry,b.st_transform);
+        """
 
 def GetFIDfromID(ID, connString):
     statement = GetFIDfromIDQuery(ID)
@@ -168,17 +203,41 @@ def GetGeomGetFeatFromID(l, id):
 
     return f, g
 
+def GPSDataPrep(gpxfn, connString):
+    print "GPS Data Preperation"
+    # import GPS points and track
+    callStatement = "ogr2ogr -f 'PostgreSQL' PG:'host=localhost user=postgres dbname=omm' %s track_points tracks -overwrite"% (gpxfn)
+    os.system(callStatement)
+    print "GPS points and tracks imported as 'tracks' and 'track_points'"
+
+    # buffer track
+    statement = dropTableQuery("tracks_buffer")
+    query(connString, statement)
+    statement = bufferQuery()
+    query(connString, statement)
+    print "Buffer of 'tracks' created as 'tracks_buffer'"
+
+    # extract ways intersecting buffer
+    statement = dropTableQuery("ways_extract")
+    query(connString, statement)
+    statement = intersectQuery()
+    query(connString, statement)
+    print "Intersected 'tracks_buffer' with 'ways_split' created as 'ways_extract'"
+
+    print "##################################################"
 
 def main():
+    gpxfn = "sample.gpx"
 
-    osmTable = "ways_extract_split"
-    gpsTable = "track_vertex_sub"
+    osmTable = "ways_extract"
+    gpsTable = "track_points"
 
     databaseName = "omm"
     databaseUser = "postgres"
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
+    GPSDataPrep(gpxfn, connString)
 
     connOGR = ogr.Open("PG: " + connString)
 
@@ -226,8 +285,10 @@ def main():
                     oPointD = (oFeature.GetField("x2"), oFeature.GetField("y2"), 0.0)
                 oB = bearing(oPointO, oPointD)
                 qB = qFeature.GetField("course")
-                dob = abs(oB - float(qB))
-                wB = 1.0-float(qB)*dob/100.0/100.0
+                if qB != None:
+                    dob = abs(oB - float(qB))
+                    wB = 1.0-float(qB)*dob/100.0/100.0
+                else: wB = 0
                 if wB < 0:
                     wB = 0.0
 
