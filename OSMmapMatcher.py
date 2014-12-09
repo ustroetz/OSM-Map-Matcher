@@ -172,7 +172,7 @@ def GetGeomGetFeatFromID(l, id):
 def main():
 
     osmTable = "ways_extract_split"
-    gpsTable = "track_points_sub"
+    gpsTable = "track_vertex_sub"
 
     databaseName = "omm"
     databaseUser = "postgres"
