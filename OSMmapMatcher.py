@@ -16,8 +16,6 @@ def findFirstMatch(qID, qLayer, oLayer, rList):
 
     oIDselected = min(oDict, key=oDict.get)
     rList.append(oIDselected)
-    print "##########################"
-    print "First matching OSM segment ID =", oIDselected
 
     return oIDselected, rList
 
@@ -194,14 +192,16 @@ def main():
     qID = 1
 
     oIDselected, rList = findFirstMatch(qID, qLayer, oLayer, rList)
+    print "##################################################"
+    print "First selecte segment ogc_fid =", oIDselected
 
 
     while qID <= qFeatureCount:
-        # Loop over remaing OSM segments for all qn
+        # Loop over remaining OSM segments for all qn
+        oDict = {}
 
         print "##################################################"
-        print "Point ID", qID, "of", qFeatureCount
-        oDict = {}
+        print "Point ogc_fid", qID, "of", qFeatureCount
 
         # construct current GPS point
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
@@ -209,9 +209,6 @@ def main():
         # get selected line
         oSFeature, oSGeom = GetGeomGetFeatFromID(oLayer, oIDselected)
         oSPointF, oSPointP = oSGeom.GetPoints()
-
-        # reset reading
-        oLayer.ResetReading()
 
         #loop through all segments in OSM layer
         for oFeature in oLayer:
@@ -240,15 +237,15 @@ def main():
                 d = oGeom.Distance(qGeom)
                 qGeom = transformGeom(qGeom, 3857, 4326)
 
-
-                if d >= 20.0:                 # normalize distance weight
+                # normalize distance weight
+                if d >= 20.0:
                     wD = 0
                 elif d < 20.0 and d > 0.0:
                     wD = 1-d/50.0
                 elif d == 0.00:
                     wD = 1.0
 
-                # final weight
+                # get final weight
                 w = (wD+(wB/5.0))/2.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "(wB",wB,"wD",wD,")"
@@ -258,7 +255,7 @@ def main():
 
 
         if sum([wDList[2] for wDList in oDict.values()]) == 0:
-            # q not within 50m of next oFeature (weight Distance eqauls 0)
+            # q not within 50m of next oFeature (weight Distance equals 0)
             print "No road within 50 m of current GPS point."
 
             qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList)
