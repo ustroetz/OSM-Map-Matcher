@@ -149,6 +149,7 @@ def intersectQuery():
     return """
         CREATE TABLE ways_extract AS
     SELECT
+        a.ogc_fid,
         a.id,
         a.wkb_geometry,
         a.x1,
