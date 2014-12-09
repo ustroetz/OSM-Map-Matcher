@@ -13,25 +13,30 @@ OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it r
 wget https://s3.amazonaws.com/metro-extracts.mapzen.com/istanbul_turkey.osm.pbf
 ```
 ##### 2. Import OSM data into DB
-Modify osm2po as described here: http://gis.stackexchange.com/questions/41276/how-to-include-highways-type-track-or-service-in-osm2po
+Modify osm2po config file as described [here](http://gis.stackexchange.com/questions/41276/how-to-include-highways-type-track-or-service-in-osm2po).
 ```
 java -jar osm2po-core-4.9.1-signed.jar istanbul_turkey.osm.pbf
 psql -d test -q -f osm/osm_2po_4pgr.sql
+psql -d test -q -f osm/osm_2po_vertex.sql
+```
+##### 3. Apply Explode lines in QGIS
+##### 4. Reload into PostGIS
+```
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_extract_split temp.shp
 ```
 
-##### 3. Import GPS track
+### GPS Data Preperation
+##### 1. Import GPS track
 ```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" sample.gpx track_points tracks
+ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" sample.gpx track_vertex tracks
 ```
-![alt tag](images/gps.jpg)
 
-##### 4. Buffer GPS track
+##### 2. Buffer GPS track
 ```
 CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.0005),4326) FROM tracks
 ```
-![alt tag](images/buffer.jpg)
 
-##### 5. Intersect GPS buffer with roads
+##### 3. Intersect GPS buffer with roads
 ```
 CREATE TABLE ways_extract AS
 SELECT
@@ -48,13 +53,8 @@ FROM
 WHERE
     ST_Intersects(a.geom_way,b.st_transform);
 ```
-![alt tag](images/istanbulExtract.jpg)
 
-##### 5. Apply Explode lines in QGIS
-##### 6. Reload into PostGIS
-```
-ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_extract_split temp.shp
-```
+
 ## Run script
 ```
 python OSMmapMatcher.py
