@@ -348,7 +348,7 @@ def main():
             qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList)
             print "Next connected Point", qID, "with OSM segment", oIDselected
 
-            print "Routing from last selected line", oIDcurrent
+            print "Routing from last selected line", oIDselected
             sourceGeom = ogr.Geometry(ogr.wkbPoint)
             sourceGeom.AddPoint(oSGeom.GetPoint()[0], oSGeom.GetPoint()[1], 0)
 
