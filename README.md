@@ -7,6 +7,14 @@ OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it r
 * PostgreSQL with PostGIS and pgRouting
 
 ## OSM Data Preperation
+### Create Database
+```
+createdb omm -U postgres;
+psql -U postgres -d=omm -c "CREATE EXTENSION postgis;"
+psql -U postgres -d=omm -c "CREATE EXTENSION pgrouting;"
+```
+
+### OSM Data Preperation
 ##### 1. Download OSM Metro Extracts
 ```
 wget https://s3.amazonaws.com/metro-extracts.mapzen.com/istanbul_turkey.osm.pbf
