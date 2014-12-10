@@ -258,15 +258,16 @@ def main():
     qLayer = connOGR.GetLayer(gpsTable)
     qFeatureCount = qLayer.GetFeatureCount()
 
-    print "Total GPS points to match:", qFeatureCount
-
     rList = []
     qID = 1
+
+    print "Total GPS points to match:", qFeatureCount
+
+
 
     oIDselected, rList = findFirstMatch(qID, qLayer, oLayer, rList)
     print "##################################################"
     print "First selecte segment ogc_fid =", oIDselected
-
 
     while qID <= qFeatureCount:
         # Loop over remaining OSM segments for all qn
