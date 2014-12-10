@@ -131,7 +131,7 @@ def routeQuery(sV, tV):
 
 def bufferQuery():
     return """
-    CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.0005),4326) FROM tracks;
+    CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.001),4326) FROM tracks;
         """
 
 def dropTableQuery(table):
