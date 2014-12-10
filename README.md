@@ -10,8 +10,8 @@ OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it r
 ### Create Database
 ```
 createdb omm -U postgres;
-psql -U postgres -d=omm -c "CREATE EXTENSION postgis;"
-psql -U postgres -d=omm -c "CREATE EXTENSION pgrouting;"
+psql -U postgres -d omm -c "CREATE EXTENSION postgis;"
+psql -U postgres -d omm -c "CREATE EXTENSION pgrouting;"
 ```
 
 ### OSM Data Preperation
