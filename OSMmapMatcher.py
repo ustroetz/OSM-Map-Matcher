@@ -204,13 +204,15 @@ def GetGeomGetFeatFromID(l, id):
 
     return f, g
 
-def createTableFromIDQuery(rList):
+def createTableFromIDQuery(rList,table):
     return """
-    CREATE TABLE ways_match AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
+    CREATE TABLE """ + table + """ AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
 
 def createOutputTable(connString,rList):
-
-    tatement = createTableFromIDQuery(rList)
+    table = "ways_match"
+    statement = dropTableQuery(table)
+    query(connString, statement)
+    statement = createTableFromIDQuery(rList,table)
     query(connString, statement)
 
 
