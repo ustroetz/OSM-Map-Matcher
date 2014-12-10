@@ -30,15 +30,15 @@ def findNextMatch(qID, qLayer, oLayer, rList):
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
         oLayer.ResetReading()
         oLayer.SetAttributeFilter("ogc_fid NOT IN ("  + (",".join(str(x) for x in rList)) + ")")
-
-        bufferDist = 0.01
-        fGeom = qGeom.Buffer(bufferDist)
-        oLayer.SetSpatialFilter((qGeom.Buffer(0.01)))
-        while oLayer.GetFeatureCount() < 10:
-            # increase buffer if not enough features are within buffer
-            bufferDist += 0.1
-            fGeom = qGeom.Buffer(bufferDist)
-            oLayer.SetSpatialFilter((qGeom.Buffer(0.01)))
+        # 
+        # bufferDist = 0.01
+        # fGeom = qGeom.Buffer(bufferDist)
+        # oLayer.SetSpatialFilter(fGeom)
+        # while oLayer.GetFeatureCount() < 10:
+        #     # increase buffer if not enough features are within buffer
+        #     bufferDist += 0.1
+        #     fGeom = qGeom.Buffer(bufferDist)
+        #     oLayer.SetSpatialFilter(fGeom)
 
         qGeom = transformGeom(qGeom, 4326, 3857)
 
@@ -293,7 +293,6 @@ def main():
 
         # get selected line
         oSFeature, oSGeom = GetGeomGetFeatFromID(oLayer, oIDselected)
-        oSPointF, oSPointP = oSGeom.GetPoints()
 
         #loop through all segments in OSM layer
         for oFeature in oLayer:
@@ -301,9 +300,8 @@ def main():
             oGeom = oFeature.GetGeometryRef()
             oIDcurrent = oFeature.GetFID()
 
-            # check if first or last point intersects with last selected line
-            oPointD, oPointO = oGeom.GetPoints()
-            if oPointO == oSPointF or oPointO == oSPointP or oPointD == oSPointF or oPointD == oSPointP:
+            # check if current line intersects with last selected line
+            if oGeom.Intersects(oSGeom):
 
                 # get bearing weight
                 if oFeature.GetField("reverse_co"):
@@ -364,7 +362,7 @@ def main():
 
             if oIDselected not in rList:
                 rList.append(oIDselected)
-            print "selectedLine ID", oIDselected
+            print "selected line ogc_fid", oIDselected
 
             qID += 1
 
@@ -372,9 +370,10 @@ def main():
         else:
             oIDselected = max(oDict, key=oDict.get)
             qID += 1
-            print "selectedLine ID", oIDselected
             if oIDselected not in rList:
                 rList.append(oIDselected)
+            print "selected line ogc_fid", oIDselected
+
 
 
     createOutputTable(connString,rList)
