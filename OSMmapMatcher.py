@@ -204,6 +204,16 @@ def GetGeomGetFeatFromID(l, id):
 
     return f, g
 
+def createTableFromIDQuery(rList):
+    return """
+    CREATE TABLE ways_match AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
+
+def createOutputTable(connString,rList):
+
+    tatement = createTableFromIDQuery(rList)
+    query(connString, statement)
+
+
 def GPSDataPrep(gpxfn, connString):
     print "GPS Data Preperation"
     # import GPS points and track
@@ -352,7 +362,8 @@ def main():
                 rList.append(oIDselected)
 
 
-    print """ "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
+    createOutputTable(connString,rList)
+    print "Final table ways_match created"
 
 
 
