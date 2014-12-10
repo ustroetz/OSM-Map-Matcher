@@ -28,8 +28,20 @@ def findNextMatch(qID, qLayer, oLayer, rList):
     while oIDselected == None:
 
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
-        qGeom = transformGeom(qGeom, 4326, 3857)
         oLayer.ResetReading()
+        oLayer.SetAttributeFilter("ogc_fid NOT IN ("  + (",".join(str(x) for x in rList)) + ")")
+
+        bufferDist = 0.01
+        fGeom = qGeom.Buffer(bufferDist)
+        oLayer.SetSpatialFilter((qGeom.Buffer(0.01)))
+        while oLayer.GetFeatureCount() < 10:
+            # increase buffer if not enough features are within buffer
+            bufferDist += 0.1
+            fGeom = qGeom.Buffer(bufferDist)
+            oLayer.SetSpatialFilter((qGeom.Buffer(0.01)))
+
+        qGeom = transformGeom(qGeom, 4326, 3857)
+
         for oFeature in oLayer:
             oGeom = oFeature.GetGeometryRef()
             oGeom = transformGeom(oGeom, 4326, 3857)
