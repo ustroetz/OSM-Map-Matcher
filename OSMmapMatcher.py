@@ -330,12 +330,12 @@ def main():
                 if d >= 20.0:
                     wD = 0
                 elif d < 20.0 and d > 0.0:
-                    wD = 1-d/50.0
+                    wD = 1-d/20.0
                 elif d == 0.00:
                     wD = 1.0
 
                 # get final weight
-                w = (wD+(wB/5.0))/2.0
+                w = (wD+(wB/3.0))/2.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "(wB",wB,"wD",wD,")"
 
