@@ -30,15 +30,15 @@ def findNextMatch(qID, qLayer, oLayer, rList):
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
         oLayer.ResetReading()
         oLayer.SetAttributeFilter("ogc_fid NOT IN ("  + (",".join(str(x) for x in rList)) + ")")
-        # 
-        # bufferDist = 0.01
-        # fGeom = qGeom.Buffer(bufferDist)
-        # oLayer.SetSpatialFilter(fGeom)
-        # while oLayer.GetFeatureCount() < 10:
-        #     # increase buffer if not enough features are within buffer
-        #     bufferDist += 0.1
-        #     fGeom = qGeom.Buffer(bufferDist)
-        #     oLayer.SetSpatialFilter(fGeom)
+
+        bufferDist = 0.01
+        fGeom = qGeom.Buffer(bufferDist)
+        oLayer.SetSpatialFilter(fGeom)
+        while oLayer.GetFeatureCount() < 10:
+            # increase buffer if not enough features are within buffer
+            bufferDist += 0.1
+            fGeom = qGeom.Buffer(bufferDist)
+            oLayer.SetSpatialFilter(fGeom)
 
         qGeom = transformGeom(qGeom, 4326, 3857)
 
@@ -294,9 +294,13 @@ def main():
         # get selected line
         oSFeature, oSGeom = GetGeomGetFeatFromID(oLayer, oIDselected)
 
+        oLayer.ResetReading()
+        oLayer.SetAttributeFilter(None)
+        oLayer.SetSpatialFilter(None)
+
+
         #loop through all segments in OSM layer
         for oFeature in oLayer:
-
             oGeom = oFeature.GetGeometryRef()
             oIDcurrent = oFeature.GetFID()
 
@@ -338,7 +342,6 @@ def main():
                 oDict[oIDcurrent] = w, wB, wD
 
 
-
         if sum([wDList[2] for wDList in oDict.values()]) == 0:
             # q not within 50m of next oFeature (weight Distance equals 0)
             print "No road within 50 m of current GPS point."
@@ -373,6 +376,7 @@ def main():
             if oIDselected not in rList:
                 rList.append(oIDselected)
             print "selected line ogc_fid", oIDselected
+
 
 
 
