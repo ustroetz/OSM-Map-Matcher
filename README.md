@@ -22,7 +22,7 @@ wget https://s3.amazonaws.com/metro-extracts.mapzen.com/istanbul_turkey.osm.pbf
 ##### 2. Import OSM data into DB
 Modify osm2po config file as described [here](http://gis.stackexchange.com/questions/41276/how-to-include-highways-type-track-or-service-in-osm2po).
 ```
-java -jar osm2po-core-4.9.1-signed.jar istanbul_turkey.osm.pbf
+java -jar osm2po-core-5.0.0-signed.jar istanbul_turkey.osm.pbf
 psql -d test -q -f osm/osm_2po_4pgr.sql
 psql -d test -q -f osm/osm_2po_vertex.sql
 ```
