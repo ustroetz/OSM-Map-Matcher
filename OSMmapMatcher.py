@@ -231,7 +231,7 @@ def createOutputTable(connString,rList):
 def GPSDataPrep(gpxfn, connString):
     print "GPS Data Preperation"
     # import GPS points and track
-    callStatement = "ogr2ogr -f 'PostgreSQL' PG:'host=localhost user=postgres dbname=omm' %s track_points tracks -overwrite"% (gpxfn)
+    callStatement = "ogr2ogr -f 'PostgreSQL' PG:'" + connString + "' %s track_points tracks -overwrite"% (gpxfn)
     os.system(callStatement)
     print "GPS points and tracks imported as 'tracks' and 'track_points'"
 
@@ -258,7 +258,7 @@ def main():
     gpsTable = "track_points"
 
     databaseName = "omm"
-    databaseUser = "postgres"
+    databaseUser = "ustroetz"
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
