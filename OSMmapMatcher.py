@@ -57,6 +57,7 @@ def findNextMatch(qID, qLayer, oLayer, rList):
 
     return qID, oIDselected
 
+
 def testMatch(qID, qLayer, oLayer, rList):
 
     test = False
@@ -83,6 +84,7 @@ def testMatch(qID, qLayer, oLayer, rList):
         test = True
 
     return test
+
 
 def findNextMatchS(qID, qLayer, oLayer, rList):
     test = False
@@ -130,6 +132,7 @@ def vertexQuery(geom):
               ORDER BY geom_vertex <-> ST_GeometryFromText('%s',4326) LIMIT 1
               """% (geom.ExportToWkt())
 
+
 def routeQuery(sV, tV):
     return """
         SELECT id2 FROM pgr_dijkstra('
@@ -141,10 +144,12 @@ def routeQuery(sV, tV):
                         %s, %s, false, false);
                         """% (sV, tV)
 
+
 def bufferQuery():
     return """
     CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.001),4326) FROM tracks;
         """
+
 
 def dropTableQuery(table):
         return """
@@ -156,6 +161,7 @@ def GetFIDfromIDQuery(ID):
     return """
         SELECT ogc_fid from ways_extract where id in (%s);
         """% (ID)
+
 
 def intersectQuery():
     return """
@@ -176,10 +182,12 @@ def intersectQuery():
         ST_Intersects(a.wkb_geometry,b.st_transform);
         """
 
+
 def GetFIDfromID(ID, connString):
     statement = GetFIDfromIDQuery(ID)
     FID = query(connString, statement)
     return FID
+
 
 def routing(sourceGeom, targetGeom, connString):
     # routes form source to target and returns list with ids of ways
@@ -200,6 +208,7 @@ def routing(sourceGeom, targetGeom, connString):
 
     return rW
 
+
 def transformGeom(geom, sourceEPSG, targetEPSG):
     source = osr.SpatialReference()
     source.ImportFromEPSG(sourceEPSG)
@@ -210,15 +219,18 @@ def transformGeom(geom, sourceEPSG, targetEPSG):
 
     return geom
 
+
 def GetGeomGetFeatFromID(l, id):
     f = l.GetFeature(id)
     g = f.GetGeometryRef()
 
     return f, g
 
+
 def createTableFromIDQuery(rList,table):
     return """
     CREATE TABLE """ + table + """ AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
+
 
 def createOutputTable(connString,rList):
     table = "ways_match"
@@ -251,8 +263,9 @@ def GPSDataPrep(gpxfn, connString):
 
     print "##################################################"
 
+
 def main():
-    gpxfn = "sample.gpx"
+    gpxfn = "1127.gpx"
 
     osmTable = "ways_extract"
     gpsTable = "track_points"
