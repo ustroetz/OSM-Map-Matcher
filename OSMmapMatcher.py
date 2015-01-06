@@ -340,10 +340,13 @@ def main():
                 qGeom = transformGeom(qGeom, 3857, 4326)
 
                 # normalize distance weight
-                if d >= 20.0:
+                dT = 100.0              # distance threshold
+                if qID == 20: dt = 20.0 # decrease thresholf after first 20 points (left parking spot)
+
+                if d >= dT:
                     wD = 0
-                elif d < 20.0 and d > 0.0:
-                    wD = 1-d/20.0
+                elif d < dT and d > 0.0:
+                    wD = 1-d/dT
                 elif d == 0.00:
                     wD = 1.0
 
