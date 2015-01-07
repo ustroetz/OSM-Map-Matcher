@@ -3,9 +3,9 @@ import math
 import psycopg2
 import os
 
-def checkReverseBearing(oB,qB):
+def checkReverseBearing(oB, qB, oneWay):
     # reverse bearing by 180 degrees if not in direct range
-    if oB not in range(int(qB)-90,int(qB)+90):
+    if oB not in range(int(qB)-90,int(qB)+90) and not oneWay:
         if oB > 180: oB = oB - 180
         else: oB + 180
     return oB
@@ -326,6 +326,7 @@ def main():
     oID2 = None
     oID1 = None
     oID0 = None
+    oneWay = False
 
     print "Total GPS points to match:", qFeatureCount
 
@@ -362,12 +363,13 @@ def main():
             if oGeom.Intersects(oSGeom):
 
                 # get bearing weight
+                if oFeature.GetField("reverse_co") > 0: oneWay = True
                 oPointO = (oFeature.GetField("x1"), oFeature.GetField("y1"), 0.0)
                 oPointD = (oFeature.GetField("x2"), oFeature.GetField("y2"), 0.0)
                 oB = bearing(oPointO, oPointD)
                 qB = qFeature.GetField("course")
                 if qB != None:
-                    oB = checkReverseBearing(oB,qB)
+                    oB = checkReverseBearing(oB, qB, oneWay)
                     dob = abs(oB - float(qB))
                     wB = 1.0-float(qB)*dob/100.0/100.0
                 else:
