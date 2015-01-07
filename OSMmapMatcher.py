@@ -420,8 +420,7 @@ def main():
             print "Next Point on street segment", sqID, "with OSM segment", oIDselected
 
             createOSMGPX(sqID,tqID)
-            print "OSM GPX file generated for digitizing in OSM"
-            quit()
+            raise Exception("Road doesn't exist. OSM GPX file generated for digitizing in OSM")
 
 
 
