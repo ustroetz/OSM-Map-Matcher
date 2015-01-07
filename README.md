@@ -1,5 +1,5 @@
 # OSM Map Matcher
-OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it returns solely the id of the matched highways. 
+OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it returns solely the id of the matched highways.
 
 ## Requires
 * python-gdal
@@ -46,6 +46,13 @@ ogr2ogr -f "PostgreSQL" PG:"host=localhost user=postgres dbname=omm" -nln ways_s
 ```
 python OSMmapMatcher.py
 ```
+If the script exits, a GPX file is generated `osm_date-time.gpx`
+1. Go to https://www.openstreetmap.org/edit
+2. Drag and drop the GPX file
+3. Digitize the road
+4. Use `#allryder` as a commit message
+
+Else a table with the matching OSM streets is created in the database
 
 
 ## Background
