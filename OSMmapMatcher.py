@@ -326,7 +326,6 @@ def main():
     oID2 = None
     oID1 = None
     oID0 = None
-    oneWay = False
 
     print "Total GPS points to match:", qFeatureCount
 
@@ -358,12 +357,13 @@ def main():
         for oFeature in oLayer:
             oGeom = oFeature.GetGeometryRef()
             oIDcurrent = oFeature.GetFID()
+            oneWay = False
+            if oFeature.GetField("reverse_co") > 1: oneWay = True
 
             # check if current line intersects with last selected line
             if oGeom.Intersects(oSGeom):
 
                 # get bearing weight
-                if oFeature.GetField("reverse_co") > 0: oneWay = True
                 oPointO = (oFeature.GetField("x1"), oFeature.GetField("y1"), 0.0)
                 oPointD = (oFeature.GetField("x2"), oFeature.GetField("y2"), 0.0)
                 oB = bearing(oPointO, oPointD)
