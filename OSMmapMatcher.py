@@ -2,6 +2,7 @@ import ogr, osr
 import math
 import psycopg2
 import os
+import time
 
 def checkReverseBearing(oB, qB, oneWay):
     # reverse bearing by 180 degrees if not in direct range
@@ -302,8 +303,18 @@ def GPSDataPrep(gpxfn, connString):
     print "##################################################"
 
 
+def createOSMGPX(sqID,tqID):
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    osm_fn = "osm_" + timestr + ".gpx"
+    tolerance = 20
+    ogc_fidString = ( ", ".join( str(e) for e in range(sqID-tolerance, tqID+tolerance) ) )
+    callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost user=ustroetz dbname=omm' -sql 'SELECT ogc_fid, wkb_geometry FROM track_points WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
+    os.system(callStatement)
+
+
+
 def main():
-    gpxfn = "sample2.gpx"
+    gpxfn = "sample3.gpx"
 
     osmTable = "ways_extract"
     gpsTable = "track_points"
@@ -384,7 +395,7 @@ def main():
 
                 # normalize distance weight
                 dT = 100.0              # distance threshold
-                if qID == 20: dt = 20.0 # decrease thresholf after first 20 points (left parking spot)
+                if qID == 20: dt = 20.0 # decrease threshold after first 20 points (left parking spot)
 
                 if d >= dT:
                     wD = 0
@@ -400,31 +411,46 @@ def main():
 
                 oDict[oIDcurrent] = w, wB, wD
 
-
+        # Check if q not within 20m of next oFeature (weight Distance equals 0)
         if sum([wDList[2] for wDList in oDict.values()]) == 0:
-            # q not within 50m of next oFeature (weight Distance equals 0)
-            print "No road within 50 m of current GPS point."
+            print "No road within 20 m of current GPS point."
+            sqID = qID
 
-            qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList)
-            print "Next connected Point", qID, "with OSM segment", oIDselected
+            tqID, oIDselected = findNextMatchS(sqID, qLayer, oLayer, rList)
+            print "Next Point on street segment", sqID, "with OSM segment", oIDselected
 
-            print "Routing from last selected line", oIDselected
-            sourceGeom = ogr.Geometry(ogr.wkbPoint)
-            sourceGeom.AddPoint(oSGeom.GetPoint()[0], oSGeom.GetPoint()[1], 0)
+            createOSMGPX(sqID,tqID)
+            print "OSM GPX file generated for digitizing in OSM"
+            quit()
 
-            print "Routing to Point", qID
-            qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
 
-            ID = routing(sourceGeom, qGeom, connString)
-            print "Routing selected lines ID", ID
 
-            rWL = ','.join(map(str, ID))
-            sSeg = GetFIDfromID(rWL, connString)
-            [rList.append(oIDselectedR[0]) if oIDselectedR[0] not in rList else '' for oIDselectedR in sSeg]
 
-            if oIDselected not in rList:
-                rList.append(oIDselected)
-            qID += 1
+        # Routing - no longer necessary
+        # if sum([wDList[2] for wDList in oDict.values()]) == 0:
+        #     # q not within 20m of next oFeature (weight Distance equals 0)
+        #     print "No road within 20 m of current GPS point."
+        #
+        #     qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList)
+        #     print "Next connected Point", qID, "with OSM segment", oIDselected
+        #
+        #     print "Routing from last selected line", oIDselected
+        #     sourceGeom = ogr.Geometry(ogr.wkbPoint)
+        #     sourceGeom.AddPoint(oSGeom.GetPoint()[0], oSGeom.GetPoint()[1], 0)
+        #
+        #     print "Routing to Point", qID
+        #     qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
+        #
+        #     ID = routing(sourceGeom, qGeom, connString)
+        #     print "Routing selected lines ID", ID
+        #
+        #     rWL = ','.join(map(str, ID))
+        #     sSeg = GetFIDfromID(rWL, connString)
+        #     [rList.append(oIDselectedR[0]) if oIDselectedR[0] not in rList else '' for oIDselectedR in sSeg]
+        #
+        #     if oIDselected not in rList:
+        #         rList.append(oIDselected)
+        #     qID += 1
 
 
         else:
