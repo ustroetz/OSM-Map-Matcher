@@ -3,6 +3,37 @@ import math
 import psycopg2
 import os
 
+def checkIntersectIDs(l,id1,id2):
+    f1 = l.GetFeature(id1)
+    g1 = f1.GetGeometryRef()
+    f2 = l.GetFeature(id2)
+    g2 = f2.GetGeometryRef()
+    return g1.Intersect(g2)
+
+
+def removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected):
+    oID3 = oID2
+    oID2 = oID1
+    oID1 = oID0
+    oID0 = oIDselected
+    if oID3 is not None:
+        # check if oID1 and oID2 connect
+        oID1oID2 = checkIntersectIDs(oLayer,oID1,oID2)
+
+        # check if oID1 and oID3 connect
+        oID1oID3 = checkIntersectIDs(oLayer,oID1,oID3)
+
+        # if both true check if oID0 connects to oID1 or oID 2 -> non-connected fails
+        if oID1oID2 and oID1oID3:
+            if not checkIntersectIDs(oLayer,oID0,oID1):
+                rList.remove(oID1)
+            elif not checkIntersectIDs(oLayer,oID0,oID2):
+                rList.remove(oID2)
+            else:
+                raise Exception("ConnectThree Error")
+
+    return rList, oID0, oID1, oID2
+
 
 def findFirstMatch(qID, qLayer, oLayer, rList):
 
@@ -123,7 +154,6 @@ def query(connString, statement):
         return result
     except:
         pass
-
 
 
 def vertexQuery(geom):
@@ -265,7 +295,7 @@ def GPSDataPrep(gpxfn, connString):
 
 
 def main():
-    gpxfn = "1127.gpx"
+    gpxfn = "sample2.gpx"
 
     osmTable = "ways_extract"
     gpsTable = "track_points"
@@ -285,6 +315,9 @@ def main():
 
     rList = []
     qID = 1
+    oID2 = None
+    oID1 = None
+    oID0 = None
 
     print "Total GPS points to match:", qFeatureCount
 
@@ -381,8 +414,6 @@ def main():
 
             if oIDselected not in rList:
                 rList.append(oIDselected)
-            print "selected line ogc_fid", oIDselected
-
             qID += 1
 
 
@@ -391,7 +422,10 @@ def main():
             qID += 1
             if oIDselected not in rList:
                 rList.append(oIDselected)
-            print "selected line ogc_fid", oIDselected
+                rList, oID0, oID1, oID2 = removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected)
+
+        print "selected line ogc_fid", oIDselected
+
 
 
 
