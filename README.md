@@ -1,10 +1,13 @@
 # OSM Map Matcher
-OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it returns solely the id of the matched highways.
+OSM Map Matcher matches GPS coordinates to existing OSM highways. Currently it returns solely the id of the matched highways. 
 
 ## Requires
 * python-gdal
 * psycopg2
 * PostgreSQL with PostGIS and pgRouting
+
+## Convert KML to GPX
+http://www.gpsvisualizer.com/convert_input
 
 ## OSM Data Preperation
 ### Create Database
