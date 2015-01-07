@@ -3,6 +3,14 @@ import math
 import psycopg2
 import os
 
+def checkReverseBearing(oB,qB):
+    # reverse bearing by 180 degrees if not in direct range
+    if oB not in range(int(qB)-90,int(qB)+90):
+        if oB > 180: oB = oB - 180
+        else: oB + 180
+    return oB
+
+
 def checkIntersectIDs(l,id1,id2):
     f1 = l.GetFeature(id1)
     g1 = f1.GetGeometryRef()
@@ -354,17 +362,17 @@ def main():
             if oGeom.Intersects(oSGeom):
 
                 # get bearing weight
-                if oFeature.GetField("reverse_co"):
-                    oPointO = (oFeature.GetField("x1"), oFeature.GetField("y1"), 0.0)
-                    oPointD = (oFeature.GetField("x2"), oFeature.GetField("y2"), 0.0)
+                oPointO = (oFeature.GetField("x1"), oFeature.GetField("y1"), 0.0)
+                oPointD = (oFeature.GetField("x2"), oFeature.GetField("y2"), 0.0)
                 oB = bearing(oPointO, oPointD)
                 qB = qFeature.GetField("course")
                 if qB != None:
+                    oB = checkReverseBearing(oB,qB)
                     dob = abs(oB - float(qB))
                     wB = 1.0-float(qB)*dob/100.0/100.0
-                else: wB = 0
-                if wB < 0:
-                    wB = 0.0
+                else:
+                    wB = 0
+                if wB < 0: wB = 0.0
 
                 # get distance weight
                 oGeom = transformGeom(oGeom, 4326, 3857)
