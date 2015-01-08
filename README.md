@@ -13,8 +13,8 @@ http://www.gpsvisualizer.com/convert_input
 ### Create Database
 ```
 createdb omm -U postgres;
-psql -U postgres -d omm -c "CREATE EXTENSION postgis;"
-psql -U postgres -d omm -c "CREATE EXTENSION pgrouting;"
+psql -U postgres -d omm -U postgres -c "CREATE EXTENSION postgis;"
+psql -U postgres -d omm -U postgres -c "CREATE EXTENSION pgrouting;"
 ```
 
 ### OSM Data Preperation
