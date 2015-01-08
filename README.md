@@ -32,8 +32,8 @@ wtr.tag.highway.service =        1,  51, 5,   car|bike
 
 ```
 java -jar osm2po-core-5.0.0-signed.jar istanbul_turkey.osm.pbf
-psql -d omm -q -f osm/osm_2po_4pgr.sql
-psql -d omm -q -f osm/osm_2po_vertex.sql
+psql -d omm -U postgres -q -f osm/osm_2po_4pgr.sql
+psql -d omm -U postgres -q -f osm/osm_2po_vertex.sql
 ```
 ##### 3. Apply Explode lines in QGIS
 ##### 4. Reload into PostGIS
