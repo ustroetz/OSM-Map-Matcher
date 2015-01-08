@@ -172,18 +172,6 @@ def vertexQuery(geom):
               """% (geom.ExportToWkt())
 
 
-def routeQuery(sV, tV):
-    return """
-        SELECT id2 FROM pgr_dijkstra('
-                        SELECT id,
-                                 source::integer,
-                                 target::integer,
-                                 cost
-                                FROM osm_2po_4pgr',
-                        %s, %s, false, false);
-                        """% (sV, tV)
-
-
 def bufferQuery():
     return """
     CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.001),4326) FROM tracks;
@@ -226,26 +214,6 @@ def GetFIDfromID(ID, connString):
     statement = GetFIDfromIDQuery(ID)
     FID = query(connString, statement)
     return FID
-
-
-def routing(sourceGeom, targetGeom, connString):
-    # routes form source to target and returns list with ids of ways
-
-    # get source route vertex
-    statement = vertexQuery(sourceGeom)
-    sV = query(connString, statement)
-
-    # get target route vertex
-    statement = vertexQuery(targetGeom)
-    tV = query(connString, statement)
-
-    # get route
-    statement = routeQuery(sV[0][0], tV[0][0])
-    r = query(connString, statement)
-
-    rW = [i[0] for i in r[:-1]]
-
-    return rW
 
 
 def transformGeom(geom, sourceEPSG, targetEPSG):
@@ -320,7 +288,7 @@ def main():
     gpsTable = "track_points"
 
     databaseName = "omm"
-    databaseUser = "ustroetz"
+    databaseUser = "postgres"
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
 
@@ -421,36 +389,6 @@ def main():
 
             createOSMGPX(sqID,tqID)
             raise Exception("Road doesn't exist. OSM GPX file generated for digitizing in OSM")
-
-
-
-
-        # Routing - no longer necessary
-        # if sum([wDList[2] for wDList in oDict.values()]) == 0:
-        #     # q not within 20m of next oFeature (weight Distance equals 0)
-        #     print "No road within 20 m of current GPS point."
-        #
-        #     qID, oIDselected = findNextMatchS(qID, qLayer, oLayer, rList)
-        #     print "Next connected Point", qID, "with OSM segment", oIDselected
-        #
-        #     print "Routing from last selected line", oIDselected
-        #     sourceGeom = ogr.Geometry(ogr.wkbPoint)
-        #     sourceGeom.AddPoint(oSGeom.GetPoint()[0], oSGeom.GetPoint()[1], 0)
-        #
-        #     print "Routing to Point", qID
-        #     qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
-        #
-        #     ID = routing(sourceGeom, qGeom, connString)
-        #     print "Routing selected lines ID", ID
-        #
-        #     rWL = ','.join(map(str, ID))
-        #     sSeg = GetFIDfromID(rWL, connString)
-        #     [rList.append(oIDselectedR[0]) if oIDselectedR[0] not in rList else '' for oIDselectedR in sSeg]
-        #
-        #     if oIDselected not in rList:
-        #         rList.append(oIDselected)
-        #     qID += 1
-
 
         else:
             oIDselected = max(oDict, key=oDict.get)
