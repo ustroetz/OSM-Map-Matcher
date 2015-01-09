@@ -1,14 +1,77 @@
-import ogr, osr
+import gdal, ogr, osr
+gdal.SetConfigOption('OSM_CONFIG_FILE', 'osmconf.ini')
 import math
 import psycopg2
 import os
 import time
+import requests
+import gdal
+
+def createOSMroads(bboxWGS84,osmfn):
+    bboxCoords = str(bboxWGS84[0]) + ',' + str(bboxWGS84[2]) + ',' + str(bboxWGS84[1]) + ',' + str(bboxWGS84[3])
+    url = 'http://www.overpass-api.de/api/xapi?way[highway=*][bbox=%s]' % bboxCoords
+    osm = requests.get(url)
+    file = open(osmfn, 'w')
+    file.write(osm.text.encode('utf-8'))
+    file.close()
+
+def getBbox(l):
+    bbox = l.GetExtent()
+    return bbox
+
+def createWaysTable(connString, qLayer, gpxfn):
+    osmfn = 'OSMroads' + gpxfn + '.osm'
+    bbox = getBbox(qLayer)
+    #createOSMroads(bbox, osmfn)
+
+    t = 'ways'
+    ds = ogr.Open(osmfn)
+    w = ds.GetLayer(1)
+    connOGR = ogr.Open("PG: " + connString)
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+
+    oLayer = connOGR.CreateLayer(t, srs, ogr.wkbLineString, ['OVERWRITE=YES'] )
+    oLayerDef = oLayer.GetLayerDefn()
+    oLayer.CreateField(ogr.FieldDefn("oneway", ogr.OFTInteger))
+    oLayer.CreateField(ogr.FieldDefn("bearing", ogr.OFTReal))
+
+
+    for lF in w:
+        if lF.GetField("oneway") == "yes": oneWay = 1
+        else: oneWay = 0
+
+        g = lF.GetGeometryRef()
+        pCount = g.GetPointCount()
+        count = 0
+        while count in range(pCount-1):
+            p1 = g.GetPoint(count)
+            count += 1
+            p2 = g.GetPoint(count)
+            l = ogr.Geometry(ogr.wkbLineString)
+            l.AddPoint(p1[0],p1[1],p1[2])
+            l.AddPoint(p2[0],p2[1],p2[2])
+
+
+            f = ogr.Feature(oLayerDef)
+            bn = bearing(p1, p2)
+            f.SetField("oneway", oneWay)
+            f.SetField("bearing", bn)
+
+            f.SetGeometry(l)
+            oLayer.StartTransaction()
+            oLayer.CreateFeature(f)
+            oLayer.CommitTransaction()
+
+
 
 def checkReverseBearing(oB, qB, oneWay):
     # reverse bearing by 180 degrees if not in direct range
     if oB not in range(int(qB)-90,int(qB)+90) and not oneWay:
         if oB > 180: oB = oB - 180
-        else: oB + 180
+        else: oB = oB + 180
+
     return oB
 
 
@@ -177,12 +240,21 @@ def bufferQuery():
     CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.001),4326) FROM tracks;
         """
 
+def renameQuery(oldName,newName):
+    return """
+    ALTER TABLE %s RENAME TO %s;
+    """% (oldName, newName)
+
 
 def dropTableQuery(table):
         return """
             DROP TABLE IF EXISTS %s;
             """% (table)
 
+def checkTableExistsQuery(table):
+        return """
+            SELECT relname FROM pg_class WHERE relname = '%s';
+            """% (table)
 
 def GetFIDfromIDQuery(ID):
     return """
@@ -195,20 +267,31 @@ def intersectQuery():
         CREATE TABLE ways_extract AS
     SELECT
         a.ogc_fid,
-        a.id,
         a.wkb_geometry,
-        a.x1,
-        a.y1,
-        a.x2,
-        a.y2,
-        a.reverse_co
+        a.oneway,
+        a.bearing
     FROM
-        ways_split as a,
+        ways as a,
         tracks_buffer as b
     WHERE
         ST_Intersects(a.wkb_geometry,b.st_transform);
         """
 
+def renameTable(oldName, newName, connString):
+    statement = renameQuery(oldName,newName)
+    query(connString, statement)
+
+
+def checkTableExists(table, connString):
+    statement = checkTableExistsQuery(table)
+    rowsCount = len(query(connString, statement))
+    if rowsCount > 0:
+        exists = True
+        print table, "does already exist. Data preperation will be skipped"
+    else:
+        exists = False
+        print table, "does not exist yet"
+    return exists
 
 def GetFIDfromID(ID, connString):
     statement = GetFIDfromIDQuery(ID)
@@ -247,13 +330,16 @@ def createOutputTable(connString,rList):
     query(connString, statement)
 
 
-def GPSDataPrep(gpxfn, connString):
+def createTracksTable(gpxfn, gpsTable, connString):
     print "GPS Data Preperation"
     # import GPS points and track
-    callStatement = "ogr2ogr -f 'PostgreSQL' PG:'" + connString + "' %s track_points tracks -overwrite"% (gpxfn)
+    callStatement = "ogr2ogr -f 'PostgreSQL' PG:'" + connString + "' %s track_points tracks -overwrite"% (gpxfn+ '.gpx')
     os.system(callStatement)
-    print "GPS points and tracks imported as 'tracks' and 'track_points'"
+    renameTable('track_points', gpsTable, connString)
+    print "GPS points and tracks imported as 'tracks' and ", gpsTable
 
+
+def createWaysExtractTable(connString):
     # buffer track
     statement = dropTableQuery("tracks_buffer")
     query(connString, statement)
@@ -266,38 +352,43 @@ def GPSDataPrep(gpxfn, connString):
     query(connString, statement)
     statement = intersectQuery()
     query(connString, statement)
-    print "Intersected 'tracks_buffer' with 'ways_split' created as 'ways_extract'"
+    print "Intersected 'tracks_buffer' with 'ways' created as 'ways_extract'"
 
     print "##################################################"
 
 
-def createOSMGPX(sqID,tqID):
+def createOSMGPX(connString, gpsTable, sqID,tqID):
     timestr = time.strftime("%Y%m%d-%H%M%S")
     osm_fn = "osm_" + timestr + ".gpx"
     tolerance = 20
     ogc_fidString = ( ", ".join( str(e) for e in range(sqID-tolerance, tqID+tolerance) ) )
-    callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost user=ustroetz dbname=omm' -sql 'SELECT ogc_fid, wkb_geometry FROM track_points WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
+    callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost " + connString + "' -sql 'SELECT ogc_fid, wkb_geometry FROM " + gpsTable + " WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
     os.system(callStatement)
 
 
 
 def main():
-    gpxfn = "sample3.gpx"
+    gpxfn = "sample3"
+
 
     osmTable = "ways_extract"
-    gpsTable = "track_points"
+    gpsTable = "track_points_" + gpxfn
 
     databaseName = "omm"
     databaseUser = "postgres"
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
-
-    GPSDataPrep(gpxfn, connString)
-
     connOGR = ogr.Open("PG: " + connString)
 
-    oLayer = connOGR.GetLayer(osmTable)
+    if not checkTableExists(gpsTable,connString):
+        createTracksTable(gpxfn, gpsTable, connString)
+
     qLayer = connOGR.GetLayer(gpsTable)
+    createWaysTable(connString, qLayer, gpxfn)
+    createWaysExtractTable(connString)
+
+    oLayer = connOGR.GetLayer(osmTable)
+
     qFeatureCount = qLayer.GetFeatureCount()
 
     rList = []
@@ -307,8 +398,6 @@ def main():
     oID0 = None
 
     print "Total GPS points to match:", qFeatureCount
-
-
 
     oIDselected, rList = findFirstMatch(qID, qLayer, oLayer, rList)
     print "##################################################"
@@ -336,16 +425,14 @@ def main():
         for oFeature in oLayer:
             oGeom = oFeature.GetGeometryRef()
             oIDcurrent = oFeature.GetFID()
-            oneWay = False
-            if oFeature.GetField("reverse_co") > 1: oneWay = True
+            if oFeature.GetField("oneway") == 1: oneWay = True
+            else: oneWay = False
 
             # check if current line intersects with last selected line
             if oGeom.Intersects(oSGeom):
 
                 # get bearing weight
-                oPointO = (oFeature.GetField("x1"), oFeature.GetField("y1"), 0.0)
-                oPointD = (oFeature.GetField("x2"), oFeature.GetField("y2"), 0.0)
-                oB = bearing(oPointO, oPointD)
+                oB = oFeature.GetField("bearing")
                 qB = qFeature.GetField("course")
                 if qB != None:
                     oB = checkReverseBearing(oB, qB, oneWay)
@@ -375,7 +462,7 @@ def main():
                 # get final weight
                 w = (wD+(wB/3.0))/2.0
 
-                print oIDcurrent, "connects to", oIDselected, "with weight", w, "(wB",wB,"wD",wD,")"
+                print oIDcurrent, "connects to", oIDselected, "with weight", w, "| wB",wB , "(", oB, qB, oneWay, ") | wD",wD,""
 
                 oDict[oIDcurrent] = w, wB, wD
 
@@ -387,7 +474,7 @@ def main():
             tqID, oIDselected = findNextMatchS(sqID, qLayer, oLayer, rList)
             print "Next Point on street segment", sqID, "with OSM segment", oIDselected
 
-            createOSMGPX(sqID,tqID)
+            createOSMGPX(connString, sqID,tqID)
             raise Exception("Road doesn't exist. OSM GPX file generated for digitizing in OSM")
 
         else:
