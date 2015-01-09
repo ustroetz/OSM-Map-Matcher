@@ -2,7 +2,7 @@ import gdal, ogr, osr
 gdal.SetConfigOption('OSM_CONFIG_FILE', 'osmconf.ini')
 import math
 import psycopg2
-import os
+import os, sys
 import time
 import requests
 import gdal
@@ -22,7 +22,7 @@ def getBbox(l):
 def createWaysTable(connString, qLayer, gpxfn):
     osmfn = 'OSMroads' + gpxfn + '.osm'
     bbox = getBbox(qLayer)
-    #createOSMroads(bbox, osmfn)
+    createOSMroads(bbox, osmfn)
 
     t = 'ways'
     ds = ogr.Open(osmfn)
@@ -366,7 +366,7 @@ def createOSMGPX(connString, gpsTable, sqID,tqID):
 
 
 
-def main():
+def main(qID):
     gpxfn = "sample3"
 
 
@@ -392,7 +392,6 @@ def main():
     qFeatureCount = qLayer.GetFeatureCount()
 
     rList = []
-    qID = 1
     oID2 = None
     oID1 = None
     oID0 = None
@@ -460,7 +459,7 @@ def main():
                     wD = 1.0
 
                 # get final weight
-                w = (wD+(wB/3.0))/2.0
+                w = (wD+(wB/5.0))/2.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "| wB",wB , "(", oB, qB, oneWay, ") | wD",wD,""
 
@@ -497,4 +496,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    qID = sys.argv[1]
+    if qID == None: qID = 1
+    else: qID = int(qID)
+    main(qID)
