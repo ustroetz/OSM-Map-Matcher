@@ -366,10 +366,7 @@ def createOSMGPX(connString, gpsTable, sqID,tqID):
 
 
 
-def main(qID):
-    gpxfn = "sample3"
-
-
+def main(gpxfn, qID, createWays):
     osmTable = "ways_extract"
     gpsTable = "track_points_" + gpxfn
     matchTable = "ways_match_" + gpxfn
@@ -384,8 +381,10 @@ def main(qID):
         createTracksTable(gpxfn, gpsTable, connString)
 
     qLayer = connOGR.GetLayer(gpsTable)
-    createWaysTable(connString, qLayer, gpxfn)
-    createWaysExtractTable(connString)
+
+    if createWays == 1:
+        createWaysTable(connString, qLayer, gpxfn)
+        createWaysExtractTable(connString)
 
     oLayer = connOGR.GetLayer(osmTable)
 
@@ -496,7 +495,7 @@ def main(qID):
 
 
 if __name__ == '__main__':
-    qID = sys.argv[1]
-    if qID == None: qID = 1
-    else: qID = int(qID)
-    main(qID)
+    gpxfn = sys.argv[1]
+    qID = int(sys.argv[2])
+    createWays = int(sys.argv[3])
+    main(gpxfn, qID, createWays)
