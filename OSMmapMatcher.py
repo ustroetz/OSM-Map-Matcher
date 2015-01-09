@@ -68,7 +68,7 @@ def createWaysTable(connString, qLayer, gpxfn):
 
 def checkReverseBearing(oB, qB, oneWay):
     # reverse bearing by 180 degrees if not in direct range
-    if oB not in range(int(qB)-90,int(qB)+90) and not oneWay:
+    if int(oB) not in range(int(qB)-90,int(qB)+90) and not oneWay:
         if oB > 180: oB = oB - 180
         else: oB = oB + 180
 
@@ -322,8 +322,7 @@ def createTableFromIDQuery(rList,table):
     CREATE TABLE """ + table + """ AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
 
 
-def createOutputTable(connString,rList):
-    table = "ways_match"
+def createOutputTable(connString,rList, table):
     statement = dropTableQuery(table)
     query(connString, statement)
     statement = createTableFromIDQuery(rList,table)
@@ -373,6 +372,7 @@ def main():
 
     osmTable = "ways_extract"
     gpsTable = "track_points_" + gpxfn
+    matchTable = "ways_match_" + gpxfn
 
     databaseName = "omm"
     databaseUser = "postgres"
@@ -490,7 +490,7 @@ def main():
 
 
 
-    createOutputTable(connString,rList)
+    createOutputTable(connString,rList, matchTable)
     print "Final table ways_match created"
 
 
