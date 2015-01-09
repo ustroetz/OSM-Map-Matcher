@@ -474,7 +474,7 @@ def main():
             tqID, oIDselected = findNextMatchS(sqID, qLayer, oLayer, rList)
             print "Next Point on street segment", sqID, "with OSM segment", oIDselected
 
-            createOSMGPX(connString, sqID,tqID)
+            createOSMGPX(connString, gpsTable, sqID,tqID)
             raise Exception("Road doesn't exist. OSM GPX file generated for digitizing in OSM")
 
         else:
