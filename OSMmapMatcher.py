@@ -104,7 +104,6 @@ def removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected, connString, mat
                 rList.remove(oID2)
             else:
                 createOutputTable(connString,rList, matchTable)
-                print "Temporary table ways_match created"
                 raise Exception("ConnectThree Error")
 
     return rList, oID0, oID1, oID2
@@ -337,7 +336,7 @@ def createOutputTable(connString,rList, table):
     query(connString, statement)
     statement = createTableFromIDQuery(rList,table)
     query(connString, statement)
-
+    print "Table %s created"% (table)
 
 def createTracksTable(lineID, gpsTable, connString):
     print "GPS Data Preperation"
@@ -494,7 +493,7 @@ def main(lineID, qID, createWays):
                     wD = 1.0
 
                 # get final weight
-                w = (wD+(wB/1.0))/2.0
+                w = (wD+(wB/2.0))/2.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "| wB",wB , "(", oB, qB, oneWay, ") | wD",wD,""
 
@@ -509,7 +508,6 @@ def main(lineID, qID, createWays):
             print "Next Point on street segment", sqID, "with OSM segment", oIDselected
 
             createOutputTable(connString,rList, matchTable)
-            print "Temporary table ways_match created"
 
             createOSMGPX(connString, gpsTable, sqID,tqID)
             raise Exception("Road doesn't exist. OSM GPX file generated for digitizing in OSM")
@@ -528,7 +526,6 @@ def main(lineID, qID, createWays):
 
 
     createOutputTable(connString,rList, matchTable)
-    print "Final table ways_match created"
 
 
 
