@@ -1,5 +1,6 @@
 import gdal, ogr, osr
 gdal.SetConfigOption('OSM_CONFIG_FILE', 'osmconf.ini')
+gdal.UseExceptions()
 import math
 import psycopg2
 import os, sys
@@ -19,8 +20,8 @@ def getBbox(l):
     bbox = l.GetExtent()
     return bbox
 
-def createWaysTable(connString, qLayer, gpxfn):
-    osmfn = 'OSMroads' + gpxfn + '.osm'
+def createWaysTable(connString, qLayer, lineID):
+    osmfn = 'OSMroads' + lineID + '.osm'
     bbox = getBbox(qLayer)
     createOSMroads(bbox, osmfn)
 
@@ -235,10 +236,10 @@ def vertexQuery(geom):
               """% (geom.ExportToWkt())
 
 
-def bufferQuery():
+def bufferQuery(lineID):
     return """
-    CREATE TABLE tracks_buffer AS SELECT ogc_fid, ST_Transform(ST_Buffer(wkb_geometry,0.001),4326) FROM tracks;
-        """
+    CREATE TABLE tracks_buffer AS SELECT ST_Transform(ST_Buffer(pretty_geom,0.001),4326) FROM lines WHERE id = %s;
+    """% (lineID)
 
 def renameQuery(oldName,newName):
     return """
@@ -247,14 +248,14 @@ def renameQuery(oldName,newName):
 
 
 def dropTableQuery(table):
-        return """
-            DROP TABLE IF EXISTS %s;
-            """% (table)
+    return """
+    DROP TABLE IF EXISTS %s;
+    """% (table)
 
 def checkTableExistsQuery(table):
-        return """
-            SELECT relname FROM pg_class WHERE relname = '%s';
-            """% (table)
+    return """
+    SELECT relname FROM pg_class WHERE relname = '%s';
+    """% (table)
 
 def GetFIDfromIDQuery(ID):
     return """
@@ -276,10 +277,6 @@ def intersectQuery():
     WHERE
         ST_Intersects(a.wkb_geometry,b.st_transform);
         """
-
-def renameTable(oldName, newName, connString):
-    statement = renameQuery(oldName,newName)
-    query(connString, statement)
 
 
 def checkTableExists(table, connString):
@@ -322,6 +319,17 @@ def createTableFromIDQuery(rList,table):
     CREATE TABLE """ + table + """ AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
 
 
+def createTableFromLineQuery(lineID, gpsTable):
+    return """
+    CREATE TABLE %s AS SELECT (ST_DumpPoints(pretty_geom)).geom FROM lines WHERE id = %s; ALTER TABLE %s ADD COLUMN ogc_Fid SERIAL;
+    """% (gpsTable,lineID,gpsTable)
+
+def addColumnToTableQuery(table, column, typeColumn):
+    return """
+    ALTER TABLE %s ADD COLUMN %s %s;
+    """% (table,column, typeColumn)
+
+
 def createOutputTable(connString,rList, table):
     statement = dropTableQuery(table)
     query(connString, statement)
@@ -329,20 +337,40 @@ def createOutputTable(connString,rList, table):
     query(connString, statement)
 
 
-def createTracksTable(gpxfn, gpsTable, connString):
+def createTracksTable(lineID, gpsTable, connString):
     print "GPS Data Preperation"
-    # import GPS points and track
-    callStatement = "ogr2ogr -f 'PostgreSQL' PG:'" + connString + "' %s track_points tracks -overwrite"% (gpxfn+ '.gpx')
-    os.system(callStatement)
-    renameTable('track_points', gpsTable, connString)
+    statement = createTableFromLineQuery(lineID, gpsTable)
+    query(connString, statement)
+    addBearingToTable(gpsTable,connString)
     print "GPS points and tracks imported as 'tracks' and ", gpsTable
 
 
-def createWaysExtractTable(connString):
+def addBearingToTable(table, connString):
+    connOGR = ogr.Open("PG: " + connString, True)
+    l = connOGR.GetLayer(table)
+    l.CreateField(ogr.FieldDefn("bearing", ogr.OFTReal))
+
+    fCount = l.GetFeatureCount()
+    count = 1
+    while count in range(fCount):
+        f1, g1 = GetGeomGetFeatFromID(l, count)
+        p1 =  g1.GetPoint(0)
+        count += 1
+        f2, g2 = GetGeomGetFeatFromID(l, count)
+        p2 = g2.GetPoint(0)
+        bn = bearing(p1, p2)
+        f1.SetField("bearing", bn)
+        l.StartTransaction()
+        l.SetFeature(f1)
+        l.CommitTransaction()
+
+
+
+def createWaysExtractTable(connString, lineID):
     # buffer track
     statement = dropTableQuery("tracks_buffer")
     query(connString, statement)
-    statement = bufferQuery()
+    statement = bufferQuery(lineID)
     query(connString, statement)
     print "Buffer of 'tracks' created as 'tracks_buffer'"
 
@@ -361,35 +389,34 @@ def createOSMGPX(connString, gpsTable, sqID,tqID):
     osm_fn = "osm_" + timestr + ".gpx"
     tolerance = 20
     ogc_fidString = ( ", ".join( str(e) for e in range(sqID-tolerance, tqID+tolerance) ) )
-    callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost " + connString + "' -sql 'SELECT ogc_fid, wkb_geometry FROM " + gpsTable + " WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
+    callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost " + connString + "' -sql 'SELECT ogc_fid, geom FROM " + gpsTable + " WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
     os.system(callStatement)
 
 
 
-def main(gpxfn, qID, createWays):
+def main(lineID, qID, createWays):
     osmTable = "ways_extract"
-    gpsTable = "track_points_" + gpxfn
-    matchTable = "ways_match_" + gpxfn
+    gpsTable = "track_points_" + lineID
+    matchTable = "ways_match_" + lineID
 
-    databaseName = "omm"
+    databaseName = "istanbul"
     databaseUser = "postgres"
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
     connOGR = ogr.Open("PG: " + connString)
 
     if not checkTableExists(gpsTable,connString):
-        createTracksTable(gpxfn, gpsTable, connString)
+        createTracksTable(lineID, gpsTable, connString)
 
     qLayer = connOGR.GetLayer(gpsTable)
 
     if createWays == 1:
-        createWaysTable(connString, qLayer, gpxfn)
-        createWaysExtractTable(connString)
+        createWaysTable(connString, qLayer, lineID)
+        createWaysExtractTable(connString, lineID)
 
     oLayer = connOGR.GetLayer(osmTable)
 
     qFeatureCount = qLayer.GetFeatureCount()
-
     rList = []
     oID2 = None
     oID1 = None
@@ -431,11 +458,10 @@ def main(gpxfn, qID, createWays):
 
                 # get bearing weight
                 oB = oFeature.GetField("bearing")
-                qB = qFeature.GetField("course")
+                qB = qFeature.GetField("bearing")
                 if qB != None:
                     oB = checkReverseBearing(oB, qB, oneWay)
-                    dob = abs(oB - float(qB))
-                    wB = 1.0-float(qB)*dob/100.0/100.0
+                    wB = abs(oB-qB)/oB # old thing: wB = 1 - qB*abs(oB-qB)/100.0/100.0
                 else:
                     wB = 0
                 if wB < 0: wB = 0.0
@@ -495,7 +521,8 @@ def main(gpxfn, qID, createWays):
 
 
 if __name__ == '__main__':
-    gpxfn = sys.argv[1]
+    lineID = sys.argv[1]
     qID = int(sys.argv[2])
     createWays = int(sys.argv[3])
-    main(gpxfn, qID, createWays)
+
+    main(lineID, qID, createWays)
