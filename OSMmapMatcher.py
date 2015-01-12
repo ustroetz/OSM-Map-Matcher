@@ -84,7 +84,7 @@ def checkIntersectIDs(l,id1,id2):
     return g1.Intersect(g2)
 
 
-def removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected):
+def removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected, connString, matchTable):
     oID3 = oID2
     oID2 = oID1
     oID1 = oID0
@@ -103,6 +103,8 @@ def removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected):
             elif not checkIntersectIDs(oLayer,oID0,oID2):
                 rList.remove(oID2)
             else:
+                createOutputTable(connString,rList, matchTable)
+                print "Temporary table ways_match created"
                 raise Exception("ConnectThree Error")
 
     return rList, oID0, oID1, oID2
@@ -387,7 +389,7 @@ def createWaysExtractTable(connString, lineID):
 def createOSMGPX(connString, gpsTable, sqID,tqID):
     timestr = time.strftime("%Y%m%d-%H%M%S")
     osm_fn = "osm_" + timestr + ".gpx"
-    tolerance = 20
+    tolerance = 50
     ogc_fidString = ( ", ".join( str(e) for e in range(sqID-tolerance, tqID+tolerance) ) )
     callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost " + connString + "' -sql 'SELECT ogc_fid, geom FROM " + gpsTable + " WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
     os.system(callStatement)
@@ -461,7 +463,15 @@ def main(lineID, qID, createWays):
                 qB = qFeature.GetField("bearing")
                 if qB != None:
                     oB = checkReverseBearing(oB, qB, oneWay)
-                    wB = abs(oB-qB)/oB # old thing: wB = 1 - qB*abs(oB-qB)/100.0/100.0
+                    a1 = abs(qB-oB)
+                    a2 = 360.0-qB+oB
+                    a3 = 360.0-oB+qB
+                    a = min(a1,a2,a3)
+                    wB = 1-a*(0.5/90)
+                    # if wbT < 1:
+                    #     wB = 1 - abs(oB-qB)/oB # 1 - qB*abs(oB-qB)/100.0/100.0 #
+                    # else:
+                    #     wb = 0.99
                 else:
                     wB = 0
                 if wB < 0: wB = 0.0
@@ -484,7 +494,7 @@ def main(lineID, qID, createWays):
                     wD = 1.0
 
                 # get final weight
-                w = (wD+(wB/5.0))/2.0
+                w = (wD+(wB/1.0))/2.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "| wB",wB , "(", oB, qB, oneWay, ") | wD",wD,""
 
@@ -498,6 +508,9 @@ def main(lineID, qID, createWays):
             tqID, oIDselected = findNextMatchS(sqID, qLayer, oLayer, rList)
             print "Next Point on street segment", sqID, "with OSM segment", oIDselected
 
+            createOutputTable(connString,rList, matchTable)
+            print "Temporary table ways_match created"
+
             createOSMGPX(connString, gpsTable, sqID,tqID)
             raise Exception("Road doesn't exist. OSM GPX file generated for digitizing in OSM")
 
@@ -506,7 +519,7 @@ def main(lineID, qID, createWays):
             qID += 1
             if oIDselected not in rList:
                 rList.append(oIDselected)
-                rList, oID0, oID1, oID2 = removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected)
+                rList, oID0, oID1, oID2 = removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected, connString, matchTable)
 
         print "selected line ogc_fid", oIDselected
 
