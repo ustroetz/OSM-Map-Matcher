@@ -7,6 +7,8 @@ import os, sys
 import time
 import requests
 import gdal
+from optparse import OptionParser
+
 
 def createOSMroads(bboxWGS84,osmfn):
     bboxCoords = str(bboxWGS84[0]) + ',' + str(bboxWGS84[2]) + ',' + str(bboxWGS84[1]) + ',' + str(bboxWGS84[3])
@@ -411,7 +413,7 @@ def main(lineID, qID, createWays):
 
     qLayer = connOGR.GetLayer(gpsTable)
 
-    if createWays == 1:
+    if createWays:
         createWaysTable(connString, qLayer, lineID)
         createWaysExtractTable(connString, lineID)
 
@@ -493,7 +495,7 @@ def main(lineID, qID, createWays):
                     wD = 1.0
 
                 # get final weight
-                w = (wD+(wB/2.0))/2.0
+                w = (wD*2+wB)/3.0
 
                 print oIDcurrent, "connects to", oIDselected, "with weight", w, "| wB",wB , "(", oB, qB, oneWay, ") | wD",wD,""
 
@@ -531,8 +533,15 @@ def main(lineID, qID, createWays):
 
 
 if __name__ == '__main__':
-    lineID = sys.argv[1]
-    qID = int(sys.argv[2])
-    createWays = int(sys.argv[3])
+    parser = OptionParser()
+    parser.add_option("-l", "--lineID", dest="lineID", type="string")
+    parser.add_option("-q", "--qID", dest="qID", default=1, type="int")
+    parser.add_option("-o", "--osm", action="store_true", default=False)
+
+    (options, args) = parser.parse_args()
+
+    lineID = options.lineID
+    qID = options.qID
+    createWays = options.osm
 
     main(lineID, qID, createWays)
