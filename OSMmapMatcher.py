@@ -462,20 +462,11 @@ def main(lineID, qID, createWays):
                 # get bearing weight
                 oB = oFeature.GetField("bearing")
                 qB = qFeature.GetField("bearing")
-                if qB != None:
+                if qB != None and qB != 0.0:
                     oB = checkReverseBearing(oB, qB, oneWay)
-                    a1 = abs(qB-oB)
-                    a2 = 360.0-qB+oB
-                    a3 = 360.0-oB+qB
-                    a = min(a1,a2,a3)
-                    wB = 1-a*(0.5/90)
-                    # if wbT < 1:
-                    #     wB = 1 - abs(oB-qB)/oB # 1 - qB*abs(oB-qB)/100.0/100.0 #
-                    # else:
-                    #     wb = 0.99
+                    wB = abs(1 - abs(qB - oB)/180.0)
                 else:
                     wB = 0
-                if wB < 0: wB = 0.0
 
                 # get distance weight
                 oGeom = transformGeom(oGeom, 4326, 3857)
@@ -522,7 +513,6 @@ def main(lineID, qID, createWays):
                 rList, oID0, oID1, oID2 = removeSideways(rList, oLayer, oID0, oID1, oID2, oIDselected, connString, matchTable)
 
         print "selected line ogc_fid", oIDselected
-
 
 
 
