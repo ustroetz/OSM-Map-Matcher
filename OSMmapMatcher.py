@@ -69,9 +69,8 @@ def createWaysTable(connString, qLayer, lineID):
 
 
 
-def checkReverseBearing(oB, qB, oneWay):
-    # reverse bearing by 180 degrees if not in direct range
-    if int(oB) not in range(int(qB)-90,int(qB)+90) and not oneWay:
+def checkReverseBearing(oB, oneWay):
+    if not oneWay:
         if oB > 180: oB = oB - 180
         else: oB = oB + 180
 
@@ -463,8 +462,10 @@ def main(lineID, qID, createWays):
                 oB = oFeature.GetField("bearing")
                 qB = qFeature.GetField("bearing")
                 if qB != None and qB != 0.0:
-                    oB = checkReverseBearing(oB, qB, oneWay)
-                    wB = abs(1 - abs(qB - oB)/180.0)
+                    wB1 = abs(1 - abs(qB - oB)/180.0)
+                    oB = checkReverseBearing(oB, oneWay)
+                    wB2 = abs(1 - abs(qB - oB)/180.0)
+                    wB = max(wB1,wB2)
                 else:
                     wB = 0
 
