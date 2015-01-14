@@ -39,11 +39,15 @@ def createWaysTable(connString, qLayer, lineID):
     oLayerDef = oLayer.GetLayerDefn()
     oLayer.CreateField(ogr.FieldDefn("oneway", ogr.OFTInteger))
     oLayer.CreateField(ogr.FieldDefn("bearing", ogr.OFTReal))
+    oLayer.CreateField(ogr.FieldDefn("roundabout", ogr.OFTReal))
 
 
     for lF in w:
         if lF.GetField("oneway") == "yes": oneWay = 1
         else: oneWay = 0
+
+        if lF.GetField("junction") == "roundabout":roundAbout =1
+        else: roundAbout = 0
 
         g = lF.GetGeometryRef()
         pCount = g.GetPointCount()
@@ -395,6 +399,14 @@ def createOSMGPX(connString, gpsTable, sqID,tqID):
     os.system(callStatement)
 
 
+def checkPointExists(l,id):
+    f = l.GetFeature(id)
+    if f:
+        return True
+    else:
+        return False
+
+
 
 def main(lineID, qID, createWays):
     osmTable = "ways_extract"
@@ -438,6 +450,8 @@ def main(lineID, qID, createWays):
         print "Point ogc_fid", qID, "of", qFeatureCount
 
         # construct current GPS point
+        while not checkPointExists(qLayer,qID):
+            qID += 1
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
 
         # get selected line
