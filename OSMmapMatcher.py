@@ -25,7 +25,7 @@ def getBbox(l):
 def createWaysTable(connString, qLayer, lineID):
     osmfn = 'OSMroads' + lineID + '.osm'
     bbox = getBbox(qLayer)
-    #createOSMroads(bbox, osmfn)
+    createOSMroads(bbox, osmfn)
 
     t = 'ways'
     ds = ogr.Open(osmfn)
