@@ -25,7 +25,7 @@ def getBbox(l):
 def createWaysTable(connString, qLayer, lineID):
     osmfn = 'OSMroads' + lineID + '.osm'
     bbox = getBbox(qLayer)
-    createOSMroads(bbox, osmfn)
+    #createOSMroads(bbox, osmfn)
 
     t = 'ways'
     ds = ogr.Open(osmfn)
@@ -49,27 +49,76 @@ def createWaysTable(connString, qLayer, lineID):
         if lF.GetField("junction") == "roundabout":roundAbout =1
         else: roundAbout = 0
 
-        g = lF.GetGeometryRef()
-        pCount = g.GetPointCount()
+        if roundAbout == 0:
+            g = lF.GetGeometryRef()
+            pCount = g.GetPointCount()
+            count = 0
+            while count in range(pCount-1):
+                p1 = g.GetPoint(count)
+                count += 1
+                p2 = g.GetPoint(count)
+                l = ogr.Geometry(ogr.wkbLineString)
+                l.AddPoint(p1[0],p1[1],p1[2])
+                l.AddPoint(p2[0],p2[1],p2[2])
+
+                f = ogr.Feature(oLayerDef)
+                bn = bearing(p1, p2)
+                f.SetField("oneway", oneWay)
+                f.SetField("bearing", bn)
+
+                f.SetGeometry(l)
+                oLayer.StartTransaction()
+                oLayer.CreateFeature(f)
+                oLayer.CommitTransaction()
+
+    w.ResetReading()
+    w.SetAttributeFilter("junction = 'roundabout'")
+    roundAboutList = []
+    roundAboutListI = []
+
+
+    for f in w:
+        roundAboutList.append(f.GetGeometryRef().ExportToJson())
+
+    w.SetAttributeFilter("")
+    for RAgeojson in roundAboutList:
+        gRA = ogr.CreateGeometryFromJson(RAgeojson)
+        w.ResetReading()
+        for lF in w:
+            g = lF.GetGeometryRef()
+            if g.Intersects(gRA):
+                i = gRA.Intersection(g)
+                if i.GetGeometryType() == 1:
+                    roundAboutListI.append(i.GetPoint())
+
+
+    for RAgeojson in roundAboutList:
+        gRA = ogr.CreateGeometryFromJson(RAgeojson)
+        pRACount = gRA.GetPointCount()
         count = 0
-        while count in range(pCount-1):
-            p1 = g.GetPoint(count)
+        l = ogr.Geometry(ogr.wkbLineString)
+        while count in range(pRACount):
+            p = gRA.GetPoint(count)
+            l.AddPoint(p[0],p[1],p[2])
+
+            if p in roundAboutListI and l.GetPointCount() > 1:
+                bn = bearing(l.GetPoint(l.GetPointCount()),l.GetPoint(0))
+                f = ogr.Feature(oLayerDef)
+                f.SetField("roundabout", roundAbout)
+                f.SetField("oneway", oneWay)
+                f.SetField("bearing", bn)
+                f.SetGeometry(l)
+                oLayer.StartTransaction()
+                oLayer.CreateFeature(f)
+                oLayer.CommitTransaction()
+                l = ogr.Geometry(ogr.wkbLineString)
+                p = gRA.GetPoint(count)
+                l.AddPoint(p[0],p[1],p[2])
             count += 1
-            p2 = g.GetPoint(count)
-            l = ogr.Geometry(ogr.wkbLineString)
-            l.AddPoint(p1[0],p1[1],p1[2])
-            l.AddPoint(p2[0],p2[1],p2[2])
 
 
-            f = ogr.Feature(oLayerDef)
-            bn = bearing(p1, p2)
-            f.SetField("oneway", oneWay)
-            f.SetField("bearing", bn)
 
-            f.SetGeometry(l)
-            oLayer.StartTransaction()
-            oLayer.CreateFeature(f)
-            oLayer.CommitTransaction()
+
 
 
 
