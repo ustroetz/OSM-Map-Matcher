@@ -244,7 +244,7 @@ def vertexQuery(geom):
 
 def bufferQuery(lineID):
     return """
-    CREATE TABLE tracks_buffer AS SELECT ST_Transform(ST_Buffer(pretty_geom,0.001),4326) FROM lines WHERE id = %s;
+    CREATE TABLE tracks_buffer AS SELECT name, origin, destination, ST_Transform(ST_Buffer(pretty_geom,0.001),4326) FROM lines WHERE id = %s;
     """% (lineID)
 
 def renameQuery(oldName,newName):
@@ -276,7 +276,10 @@ def intersectQuery():
         a.ogc_fid,
         a.wkb_geometry,
         a.oneway,
-        a.bearing
+        a.bearing,
+        b.name,
+        b.origin,
+        b.destination
     FROM
         ways as a,
         tracks_buffer as b
@@ -322,7 +325,7 @@ def GetGeomGetFeatFromID(l, id):
 
 def createTableFromIDQuery(rList,table):
     return """
-    CREATE TABLE """ + table + """ AS SELECT * FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
+    CREATE TABLE """ + table + """ AS SELECT ogc_fid, name, origin, destination, wkb_geometry FROM ways_extract WHERE "ogc_fid" IN (""" + (",".join(str(x) for x in rList)) + ")"
 
 
 def createTableFromLineQuery(lineID, gpsTable):
@@ -431,6 +434,7 @@ def main(lineID, qID, createWays):
     oLayer = connOGR.GetLayer(osmTable)
 
     qFeatureCount = qLayer.GetFeatureCount()
+
     rList = []
     oID2 = None
     oID1 = None
@@ -446,12 +450,12 @@ def main(lineID, qID, createWays):
         # Loop over remaining OSM segments for all qn
         oDict = {}
 
-        print "##################################################"
-        print "Point ogc_fid", qID, "of", qFeatureCount
-
-        # construct current GPS point
         while not checkPointExists(qLayer,qID):
             qID += 1
+            qFeatureCount += 1
+
+        print "##################################################"
+        print "Point ogc_fid", qID, "of", qFeatureCount
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
 
         # get selected line
@@ -481,7 +485,7 @@ def main(lineID, qID, createWays):
                     wB2 = abs(1 - abs(qB - oB)/180.0)
                     wB = max(wB1,wB2)
                 else:
-                    wB = 0
+                    wB = 0.0
 
                 # get distance weight
                 oGeom = transformGeom(oGeom, 4326, 3857)
@@ -494,7 +498,7 @@ def main(lineID, qID, createWays):
                 if qID == 20: dt = 20.0 # decrease threshold after first 20 points (left parking spot)
 
                 if d >= dT:
-                    wD = 0
+                    wD = 0.0
                 elif d < dT and d > 0.0:
                     wD = 1-d/dT
                 elif d == 0.00:
@@ -503,13 +507,13 @@ def main(lineID, qID, createWays):
                 # get final weight
                 w = (wD*2+wB)/3.0
 
-                print oIDcurrent, "connects to", oIDselected, "with weight", w, "| wB",wB , "(", oB, qB, oneWay, ") | wD",wD,""
+                print oIDcurrent, "connects to", oIDselected, "with weight", round(w,2), "| wB", round(wB,2), "(", oB, qB, oneWay, ") | wD", round(wD,2),""
 
                 oDict[oIDcurrent] = w, wB, wD
 
         # Check if q not within 20m of next oFeature (weight Distance equals 0)
         if sum([wDList[2] for wDList in oDict.values()]) == 0:
-            print "No road within 20 m of current GPS point."
+            print "No road within 10 m of current GPS point."
             sqID = qID
 
             tqID, oIDselected = findNextMatchS(sqID, qLayer, oLayer, rList)
