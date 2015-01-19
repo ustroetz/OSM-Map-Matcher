@@ -28,6 +28,8 @@ def createWaysTable(connString, qLayer, lineID):
     createOSMroads(bbox, osmfn)
 
     t = 'ways'
+    roundAboutList = []
+    roundAboutListI = []
     ds = ogr.Open(osmfn)
     w = ds.GetLayer(1)
     connOGR = ogr.Open("PG: " + connString)
@@ -40,7 +42,6 @@ def createWaysTable(connString, qLayer, lineID):
     oLayer.CreateField(ogr.FieldDefn("oneway", ogr.OFTInteger))
     oLayer.CreateField(ogr.FieldDefn("bearing", ogr.OFTReal))
     oLayer.CreateField(ogr.FieldDefn("roundabout", ogr.OFTReal))
-
 
     for lF in w:
         if lF.GetField("oneway") == "yes": oneWay = 1
@@ -70,27 +71,19 @@ def createWaysTable(connString, qLayer, lineID):
                 oLayer.StartTransaction()
                 oLayer.CreateFeature(f)
                 oLayer.CommitTransaction()
+        else:
+            roundAboutList.append(lF.GetGeometryRef().ExportToJson())
 
-    w.ResetReading()
-    w.SetAttributeFilter("junction = 'roundabout'")
-    roundAboutList = []
-    roundAboutListI = []
-
-
-    for f in w:
-        roundAboutList.append(f.GetGeometryRef().ExportToJson())
-
-    w.SetAttributeFilter("")
     for RAgeojson in roundAboutList:
         gRA = ogr.CreateGeometryFromJson(RAgeojson)
         w.ResetReading()
+        w.SetSpatialFilter(ogr.CreateGeometryFromWkt("POLYGON ((" + str(gRA.GetEnvelope()) + "))"))
         for lF in w:
             g = lF.GetGeometryRef()
             if g.Intersects(gRA):
                 i = gRA.Intersection(g)
                 if i.GetGeometryType() == 1:
                     roundAboutListI.append(i.GetPoint())
-
 
     for RAgeojson in roundAboutList:
         gRA = ogr.CreateGeometryFromJson(RAgeojson)
@@ -104,8 +97,8 @@ def createWaysTable(connString, qLayer, lineID):
             if p in roundAboutListI and l.GetPointCount() > 1:
                 bn = bearing(l.GetPoint(l.GetPointCount()),l.GetPoint(0))
                 f = ogr.Feature(oLayerDef)
-                f.SetField("roundabout", roundAbout)
-                f.SetField("oneway", oneWay)
+                f.SetField("roundabout", 1)
+                f.SetField("oneway", 1)
                 f.SetField("bearing", bn)
                 f.SetGeometry(l)
                 oLayer.StartTransaction()
@@ -116,8 +109,7 @@ def createWaysTable(connString, qLayer, lineID):
                 l.AddPoint(p[0],p[1],p[2])
             count += 1
 
-
-
+    w.SetSpatialFilter(None)
 
 
 
@@ -342,7 +334,7 @@ def checkTableExists(table, connString):
     rowsCount = len(query(connString, statement))
     if rowsCount > 0:
         exists = True
-        print table, "does already exist. Data preperation will be skipped"
+        print table, "does already exist. Table will not be created again"
     else:
         exists = False
         print table, "does not exist yet"
