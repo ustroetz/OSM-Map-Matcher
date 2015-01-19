@@ -25,7 +25,7 @@ def getBbox(l):
 def createWaysTable(connString, qLayer, lineID):
     osmfn = 'OSMroads' + lineID + '.osm'
     bbox = getBbox(qLayer)
-    createOSMroads(bbox, osmfn)
+    #createOSMroads(bbox, osmfn)
 
     t = 'ways'
     roundAboutList = []
@@ -33,7 +33,6 @@ def createWaysTable(connString, qLayer, lineID):
     ds = ogr.Open(osmfn)
     w = ds.GetLayer(1)
     connOGR = ogr.Open("PG: " + connString)
-
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
 
@@ -42,7 +41,8 @@ def createWaysTable(connString, qLayer, lineID):
     oLayer.CreateField(ogr.FieldDefn("oneway", ogr.OFTInteger))
     oLayer.CreateField(ogr.FieldDefn("bearing", ogr.OFTReal))
     oLayer.CreateField(ogr.FieldDefn("roundabout", ogr.OFTReal))
-
+    # wkt = "POLYGON((28.78647029399871471 41.15208531924869817,28.78647029399871471 41.15256598486127615,28.78746807575225475 41.15256598486127615,28.78746807575225475 41.15208531924869817,28.78647029399871471 41.15208531924869817))"
+    # w.SetSpatialFilter(ogr.CreateGeometryFromWkt(wkt))
     for lF in w:
         if lF.GetField("oneway") == "yes": oneWay = 1
         else: oneWay = 0
@@ -74,6 +74,7 @@ def createWaysTable(connString, qLayer, lineID):
         else:
             roundAboutList.append(lF.GetGeometryRef().ExportToJson())
 
+
     for RAgeojson in roundAboutList:
         gRA = ogr.CreateGeometryFromJson(RAgeojson)
         w.ResetReading()
@@ -84,6 +85,8 @@ def createWaysTable(connString, qLayer, lineID):
                 i = gRA.Intersection(g)
                 if i.GetGeometryType() == 1:
                     roundAboutListI.append(i.GetPoint())
+
+    roundAboutListI = list(set(roundAboutListI))
 
     for RAgeojson in roundAboutList:
         gRA = ogr.CreateGeometryFromJson(RAgeojson)
@@ -107,10 +110,19 @@ def createWaysTable(connString, qLayer, lineID):
                 l = ogr.Geometry(ogr.wkbLineString)
                 p = gRA.GetPoint(count)
                 l.AddPoint(p[0],p[1],p[2])
+            elif count == pRACount-1:
+                bn = bearing(l.GetPoint(l.GetPointCount()),l.GetPoint(0))
+                f = ogr.Feature(oLayerDef)
+                f.SetField("roundabout", 1)
+                f.SetField("oneway", 1)
+                f.SetField("bearing", bn)
+                f.SetGeometry(l)
+                oLayer.StartTransaction()
+                oLayer.CreateFeature(f)
+                oLayer.CommitTransaction()
             count += 1
 
     w.SetSpatialFilter(None)
-
 
 
 
@@ -458,7 +470,7 @@ def main(lineID, qID, createWays):
     matchTable = "ways_match_" + lineID
 
     databaseName = "istanbul"
-    databaseUser = "postgres"
+    databaseUser = "ustroetz"
     databasePW = ""
     connString = "dbname=%s user=%s password=%s" %(databaseName,databaseUser,databasePW)
     connOGR = ogr.Open("PG: " + connString)
