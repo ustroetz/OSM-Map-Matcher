@@ -270,7 +270,7 @@ def bearing(origin, destination):
     bd = math.degrees(b)
     br,bn = divmod(bd+360,360) # the bearing remainder and final bearing
 
-    return bn
+    return round(bn,2)
 
 
 def query(connString, statement):
@@ -294,7 +294,7 @@ def vertexQuery(geom):
 
 def bufferQuery(lineID):
     return """
-    CREATE TABLE tracks_buffer AS SELECT name, origin, destination, ST_Transform(ST_Buffer(pretty_geom,0.001),4326) FROM lines WHERE id = %s;
+    CREATE TABLE tracks_buffer AS SELECT name, origin, destination, ST_Transform(ST_Buffer(pretty_geom,0.002),4326) FROM lines WHERE id = %s;
     """% (lineID)
 
 def renameQuery(oldName,newName):
@@ -308,10 +308,12 @@ def dropTableQuery(table):
     DROP TABLE IF EXISTS %s;
     """% (table)
 
+
 def checkTableExistsQuery(table):
     return """
     SELECT relname FROM pg_class WHERE relname = '%s';
     """% (table)
+
 
 def GetFIDfromIDQuery(ID):
     return """
@@ -349,6 +351,7 @@ def checkTableExists(table, connString):
         print table, "does not exist yet"
     return exists
 
+
 def GetFIDfromID(ID, connString):
     statement = GetFIDfromIDQuery(ID)
     FID = query(connString, statement)
@@ -382,6 +385,7 @@ def createTableFromLineQuery(lineID, gpsTable):
     return """
     CREATE TABLE %s AS SELECT (ST_DumpPoints(pretty_geom)).geom FROM lines WHERE id = %s; ALTER TABLE %s ADD COLUMN ogc_Fid SERIAL;
     """% (gpsTable,lineID,gpsTable)
+
 
 def addColumnToTableQuery(table, column, typeColumn):
     return """
@@ -446,7 +450,7 @@ def createWaysExtractTable(connString, lineID):
 def createOSMGPX(connString, gpsTable, sqID,tqID):
     timestr = time.strftime("%Y%m%d-%H%M%S")
     osm_fn = "osm_" + timestr + ".gpx"
-    tolerance = 50
+    tolerance = 20
     ogc_fidString = ( ", ".join( str(e) for e in range(sqID-tolerance, tqID+tolerance) ) )
     callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost " + connString + "' -sql 'SELECT ogc_fid, geom FROM " + gpsTable + " WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
     os.system(callStatement)
