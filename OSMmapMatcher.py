@@ -18,9 +18,11 @@ def createOSMroads(bboxWGS84,osmfn):
     file.write(osm.text.encode('utf-8'))
     file.close()
 
+
 def getBbox(l):
     bbox = l.GetExtent()
     return bbox
+
 
 def createWaysTable(connString, qLayer, lineID):
     osmfn = 'OSMroads' + lineID + '.osm'
@@ -120,7 +122,6 @@ def createWaysTable(connString, qLayer, lineID):
                 oLayer.CommitTransaction()
             count += 1
     w.SetSpatialFilter(None)
-
 
 
 def checkReverseBearing(oB, oneWay):
@@ -297,6 +298,7 @@ def bufferQuery(lineID):
     CREATE TABLE tracks_buffer AS SELECT name, origin, destination, ST_Transform(ST_Buffer(pretty_geom,0.002),4326) FROM lines WHERE id = %s;
     """% (lineID)
 
+
 def renameQuery(oldName,newName):
     return """
     ALTER TABLE %s RENAME TO %s;
@@ -400,6 +402,7 @@ def createOutputTable(connString,rList, table):
     query(connString, statement)
     print "Table %s created"% (table)
 
+
 def createTracksTable(lineID, gpsTable, connString):
     print "GPS Data Preperation"
     statement = createTableFromLineQuery(lineID, gpsTable)
@@ -428,7 +431,6 @@ def addBearingToTable(table, connString):
         l.CommitTransaction()
 
 
-
 def createWaysExtractTable(connString, lineID):
     # buffer track
     statement = dropTableQuery("tracks_buffer")
@@ -449,7 +451,7 @@ def createWaysExtractTable(connString, lineID):
 
 def createOSMGPX(connString, gpsTable, sqID,tqID):
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    osm_fn = "osm_" + timestr + ".gpx"
+    osm_fn = "osm_gps" + timestr + ".gpx"
     tolerance = 20
     ogc_fidString = ( ", ".join( str(e) for e in range(sqID-tolerance, tqID+tolerance) ) )
     callStatement = "ogr2ogr -f 'GPX' " + osm_fn + " PG:'host=localhost " + connString + "' -sql 'SELECT ogc_fid, geom FROM " + gpsTable + " WHERE ogc_fid IN (" + ogc_fidString +")' -nlt Point"
@@ -462,7 +464,6 @@ def checkPointExists(l,id):
         return True
     else:
         return False
-
 
 
 def main(lineID, qID, createWays):
@@ -511,13 +512,14 @@ def main(lineID, qID, createWays):
         print "##################################################"
         print "Point ogc_fid", qID, "of", qFeatureCount
         qFeature, qGeom = GetGeomGetFeatFromID(qLayer, qID)
+        qGeomBuffer = qGeom.Buffer(0.0007)
 
         # get selected line
         oSFeature, oSGeom = GetGeomGetFeatFromID(oLayer, oIDselected)
 
         oLayer.ResetReading()
         oLayer.SetAttributeFilter(None)
-        oLayer.SetSpatialFilter(None)
+        oLayer.SetSpatialFilter(qGeomBuffer)
 
 
         #loop through all segments in OSM layer
